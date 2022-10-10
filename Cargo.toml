@@ -7,4 +7,6 @@ edition = "2021"
 
 [dependencies]
 iced = "0.4.2"
+iced_aw = { version = "0.2.0", features = ["tabs"], default-features = false }
 native-dialog = "0.6.3"
+strum = { version = "0.24.1", features = ["derive"] }
