@@ -2,7 +2,7 @@ use iced::{
     button, checkbox, container, progress_bar, radio, rule, scrollable, slider, text_input, toggler,
 };
 
-use iced_aw::tabs;
+use iced_aw::{modal, style::card, tabs};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Theme {
@@ -17,6 +17,24 @@ impl Theme {
 impl Default for Theme {
     fn default() -> Theme {
         Theme::Dark
+    }
+}
+
+impl<'a> From<Theme> for Box<dyn card::StyleSheet + 'a> {
+    fn from(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => Default::default(),
+            Theme::Dark => dark::Card.into(),
+        }
+    }
+}
+
+impl<'a> From<Theme> for Box<dyn modal::StyleSheet + 'a> {
+    fn from(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => Default::default(),
+            Theme::Dark => dark::Modal.into(),
+        }
     }
 }
 
@@ -151,7 +169,7 @@ mod dark {
         toggler, Color,
     };
 
-    use iced_aw::tabs;
+    use iced_aw::{modal, style::card, tabs};
 
     const SURFACE: Color = Color::from_rgb(
         0x40 as f32 / 255.0,
@@ -176,6 +194,33 @@ mod dark {
         0x7B as f32 / 255.0,
         0xC4 as f32 / 255.0,
     );
+
+    pub struct Card;
+
+    impl card::StyleSheet for Card {
+        fn active(&self) -> iced_aw::card::Style {
+            iced_aw::card::Style {
+                background: SURFACE.into(),
+                body_text_color: Color::WHITE,
+                border_radius: 5.,
+                head_background: ACTIVE.into(),
+                head_text_color: Color::WHITE,
+                border_color: Color::TRANSPARENT,
+                close_color: Color::WHITE,
+                ..Default::default()
+            }
+        }
+    }
+
+    pub struct Modal;
+
+    impl modal::StyleSheet for Modal {
+        fn active(&self) -> modal::Style {
+            modal::Style {
+                background: ACTIVE.into(),
+            }
+        }
+    }
 
     pub struct Tabs;
 
@@ -205,29 +250,16 @@ mod dark {
                 }
             }
         }
-        fn hovered(&self, is_active: bool) -> tabs::Style {
-            if is_active {
-                tabs::Style {
-                    background: HOVERED.into(),
-                    text_color: Color::WHITE,
-                    border_color: None,
-                    border_width: 0.,
-                    icon_color: Color::default(),
-                    tab_label_background: HOVERED.into(),
-                    tab_label_border_color: Color::TRANSPARENT,
-                    tab_label_border_width: 1.,
-                }
-            } else {
-                tabs::Style {
-                    background: HOVERED.into(),
-                    text_color: Color::WHITE,
-                    border_color: None,
-                    border_width: 0.,
-                    icon_color: Color::default(),
-                    tab_label_background: HOVERED.into(),
-                    tab_label_border_color: Color::TRANSPARENT,
-                    tab_label_border_width: 1.,
-                }
+        fn hovered(&self, _is_active: bool) -> tabs::Style {
+            tabs::Style {
+                background: HOVERED.into(),
+                text_color: Color::WHITE,
+                border_color: None,
+                border_width: 0.,
+                icon_color: Color::default(),
+                tab_label_background: HOVERED.into(),
+                tab_label_border_color: Color::TRANSPARENT,
+                tab_label_border_width: 1.,
             }
         }
     }

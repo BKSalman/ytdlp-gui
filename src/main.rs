@@ -1,11 +1,28 @@
-use std::{path::PathBuf, process::Command};
-
 use iced::{
-    button, text_input::State, window, Button, Checkbox, Color, Column, Container, Element, Length,
-    Radio, Row, Sandbox, Settings, Text, TextInput,
+    button, executor,
+    futures::{
+        channel::mpsc::{self, UnboundedSender},
+        StreamExt,
+    },
+    text_input::State,
+    window, Application, Button, Checkbox, Column, Container, Element, Length, Radio, Row,
+    Settings, Subscription, Text, TextInput,
 };
 
-use iced_aw::Tabs;
+#[allow(unused_imports)]
+use iced::Color;
+
+use iced_native::subscription;
+use std::{
+    io::{BufRead, BufReader},
+    sync::{Arc, Mutex},
+};
+use std::{
+    path::PathBuf,
+    process::{Command, Stdio},
+};
+
+use iced_aw::{modal, Card, Modal, Tabs};
 
 use native_dialog::FileDialog;
 
@@ -30,6 +47,9 @@ pub enum Message {
     SelectFolder,
     SelectFolderTextInput(String),
     SelectTab(usize),
+    EventRecieved(String),
+    Ready(UnboundedSender<String>),
+    CloseModal,
 }
 
 struct YtGUI {
@@ -47,6 +67,10 @@ struct YtGUI {
     download_folder: Option<PathBuf>,
     placeholder: String,
     active_tab: usize,
+    args: Vec<String>,
+    modal_state: modal::State<ModalState>,
+    output: String,
+    sender: Option<UnboundedSender<String>>,
 }
 
 impl Default for YtGUI {
@@ -66,9 +90,16 @@ impl Default for YtGUI {
             audio_quality: AudioQuality::default(),
             placeholder: "Download link".to_string(),
             active_tab: 0,
+            args: Vec::new(),
+            modal_state: modal::State::default(),
+            output: String::default(),
+            sender: None,
         }
     }
 }
+
+#[derive(Debug, Default)]
+struct ModalState;
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Resolution {
@@ -127,17 +158,20 @@ impl AudioQuality {
     ];
 }
 
-impl Sandbox for YtGUI {
+impl Application for YtGUI {
     type Message = Message;
-    fn new() -> Self {
-        Self::default()
+    type Executor = executor::Default;
+    type Flags = ();
+
+    fn new(_flags: Self::Flags) -> (Self, iced::Command<Message>) {
+        (Self::default(), iced::Command::none())
     }
 
     fn title(&self) -> String {
-        "Youtubedlp-GUI".to_string()
+        "Youtube Downloader".to_string()
     }
 
-    fn update(&mut self, event: Message) {
+    fn update(&mut self, event: Message) -> iced::Command<Message> {
         if !self.download_folder.clone().unwrap().is_dir()
             && !self.download_folder_state.is_focused()
         {
@@ -148,117 +182,127 @@ impl Sandbox for YtGUI {
             Message::Download(link) => {
                 if self.download_link.is_empty() {
                     self.placeholder = "No Download link was provided!".to_string();
-                    return;
+                    return iced::Command::none();
                 }
+
                 self.placeholder = "Download link".to_string();
 
-                let mut command = Command::new("yt-dlp");
-                if self.is_playlist {
-                    command.args([
-                        &link,
-                        "-o",
-                        &format!(
-                            "{}/{}",
-                            self.download_folder
-                                .clone()
-                                .unwrap()
-                                .to_str()
-                                .expect("No Videos Directory"),
-                            "%(uploader)s/%(playlist)s - %(title)s.%(ext)s"
-                        ),
-                        "--yes-playlist",
-                    ]);
-                } else {
-                    command.args([
-                        &link,
-                        "-o",
-                        &format!(
-                            "{}/{}",
-                            self.download_folder
-                                .clone()
-                                .unwrap()
-                                .to_str()
-                                .expect("No Videos Directory"),
-                            "%(title)s.%(ext)s"
-                        ),
-                    ]);
-                }
+                self.args.push(link);
 
                 match self.active_tab {
                     0 => {
-                        // Video tab
-                        match self.video_format {
-                            // VideoFormat::Flv => {
-                            //     command.args(["--format", "flv"]);
-                            // }
-                            VideoFormat::Mp4 => {
-                                command.args(["--format", "mp4"]);
-                            }
-                            VideoFormat::ThreeGP => {
-                                command.args(["--format", "3gp"]);
-                            }
-                            VideoFormat::Webm => {
-                                command.args(["--format", "webm"]);
-                            }
-                        }
+                        let mut video = String::new();
+                        self.args.push("-S".to_string());
 
                         match self.resolution {
                             Resolution::FourK => {
-                                command.args(["-S", "res:2160"]);
+                                video.push_str("res:2160,");
                             }
                             Resolution::TwoK => {
-                                command.args(["-S", "res:1440"]);
+                                video.push_str("res:1440,");
                             }
                             Resolution::FullHD => {
-                                command.args(["-S", "res:1080"]);
+                                video.push_str("res:1080,");
                             }
                             Resolution::Hd => {
-                                command.args(["-S", "res:720"]);
+                                video.push_str("res:720,");
                             }
                             Resolution::Sd => {
-                                command.args(["-S", "res:480"]);
+                                video.push_str("res:480,");
                             }
                         }
+
+                        match self.video_format {
+                            VideoFormat::Mp4 => {
+                                video.push_str("ext:mp4");
+                            }
+                            VideoFormat::ThreeGP => {
+                                video.push_str("ext:3gp");
+                            }
+                            VideoFormat::Webm => {
+                                video.push_str("ext:webm");
+                            }
+                        }
+                        self.args.push(video);
                     }
                     1 => {
                         // Audio tab
                         match self.audio_format {
                             AudioFormat::Mp3 => {
-                                command.args(["--format", "mp3"]);
+                                self.args.push("--format mp3".to_string());
                             }
                             AudioFormat::Wav => {
-                                command.args(["--format", "wav"]);
+                                self.args.push("--format wav".to_string());
                             }
                             AudioFormat::Ogg => {
-                                command.args(["--format", "ogg"]);
+                                self.args.push("--format ogg".to_string());
                             }
                             AudioFormat::Opus => {
-                                command.args(["--format", "opus"]);
+                                self.args.push("--format opus".to_string());
                             }
                             AudioFormat::Webm => {
-                                command.args(["--format", "webm"]);
+                                self.args.push("--format webm".to_string());
                             }
                         }
 
                         match self.audio_quality {
                             AudioQuality::Best => {
-                                command.args(["--audio-quality", "10"]);
+                                self.args.push("--audio-quality 10".to_string());
                             }
                             AudioQuality::Good => {
-                                command.args(["--audio-quality", "8"]);
+                                self.args.push("--audio-quality 8".to_string());
                             }
                             AudioQuality::Medium => {
-                                command.args(["--audio-quality", "6"]);
+                                self.args.push("--audio-quality 6".to_string());
                             }
                             AudioQuality::Low => {
-                                command.args(["--audio-quality", "4"]);
+                                self.args.push("--audio-quality 4".to_string());
                             }
                         }
                     }
                     _ => {}
                 }
 
-                command.spawn().expect("failed to execute process");
+                if self.is_playlist {
+                    self.args.push(format!(
+                        "--yes-playlist -o {}/%(uploader)s/%(playlist)s - %(title)s.%(ext)s",
+                        self.download_folder
+                            .clone()
+                            .unwrap()
+                            .to_str()
+                            .expect("No Videos Directory")
+                    ))
+                } else {
+                    println!("not");
+                    self.args.push("-P".to_string());
+                    self.args.push(
+                        self.download_folder
+                            .clone()
+                            .unwrap()
+                            .to_str()
+                            .expect("No Videos Directory")
+                            .to_string(),
+                    );
+                    self.args.push("-o".to_string());
+                    self.args.push("%(title)s.%(ext)s".to_string())
+                }
+
+                if let Ok(command) = Command::new("yt-dlp")
+                    .args(self.args.clone())
+                    .stdout(Stdio::piped())
+                    .spawn()
+                {
+                    if let Some(stdout) = command.stdout {
+                        self.modal_state.show(true);
+                        let sender = Arc::new(Mutex::new(self.sender.clone().unwrap()));
+                        std::thread::spawn(move || {
+                            let reader = BufReader::new(stdout);
+                            for line in reader.lines().filter_map(|line| line.ok()) {
+                                (*sender.lock().unwrap()).unbounded_send(line).unwrap();
+                            }
+                        });
+                    }
+                }
             }
             Message::InputChanged(input) => {
                 self.download_link = input;
@@ -300,7 +344,23 @@ impl Sandbox for YtGUI {
             Message::SelectedAudioQuality(quality) => {
                 self.audio_quality = quality;
             }
+            Message::EventRecieved(progress) => {
+                println!("{}", &progress);
+                if progress.ends_with("has already been downloaded") {
+                    self.output = "has already been downloaded".to_string();
+                    return iced::Command::none();
+                }
+                self.output = progress;
+            }
+            Message::Ready(sender) => {
+                self.sender = Some(sender);
+            }
+            Message::CloseModal => {
+                self.modal_state.show(false);
+            }
         }
+
+        iced::Command::none()
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -311,6 +371,7 @@ impl Sandbox for YtGUI {
                     .push(
                         TextInput::new(
                             &mut self.link_state,
+                            // TODO: make modal appear and notify the use they didn't enter a link
                             &self.placeholder,
                             &self.download_link,
                             Message::InputChanged,
@@ -378,6 +439,19 @@ impl Sandbox for YtGUI {
             .padding(20)
             .into();
 
+        let content: Element<_> = Modal::new(&mut self.modal_state, content, |_state| {
+            Card::new(
+                Text::new("My modal"),
+                Row::new()
+                    .push(Text::new(self.output.clone()))
+                    .align_items(iced::Alignment::Center),
+            )
+            .style(self.theme)
+            .max_width(300)
+            .on_close(Message::CloseModal)
+            .into()
+        }).into();
+
         // let content = content.explain(Color::BLACK);
 
         Container::new(content)
@@ -386,6 +460,10 @@ impl Sandbox for YtGUI {
             .center_y()
             .style(self.theme)
             .into()
+    }
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        bind()
     }
 }
 
@@ -546,6 +624,39 @@ impl YtGUI {
             .align_items(iced::Alignment::Center)
             .padding(12)
     }
+}
+
+enum MyState {
+    Starting,
+    Ready(mpsc::UnboundedReceiver<String>),
+}
+
+pub fn bind() -> Subscription<Message> {
+    struct Progress;
+
+    subscription::unfold(
+        std::any::TypeId::of::<Progress>(),
+        MyState::Starting,
+        |state| async move {
+            match state {
+                MyState::Starting => {
+                    let (sender, receiver) = mpsc::unbounded();
+
+                    (Some(Message::Ready(sender)), MyState::Ready(receiver))
+                }
+                MyState::Ready(mut progress_receiver) => {
+                    let received = progress_receiver.next().await;
+                    match received {
+                        Some(progress) => (
+                            Some(Message::EventRecieved(progress)),
+                            MyState::Ready(progress_receiver),
+                        ),
+                        None => (None, MyState::Ready(progress_receiver)),
+                    }
+                }
+            }
+        },
+    )
 }
 
 fn main() -> iced::Result {
