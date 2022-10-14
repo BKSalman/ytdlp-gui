@@ -531,10 +531,19 @@ pub fn bind() -> Subscription<Message> {
                 MyState::Ready(mut progress_receiver) => {
                     let received = progress_receiver.next().await;
                     match received {
-                        Some(progress) => (
-                            Some(Message::EventRecieved(progress)),
-                            MyState::Ready(progress_receiver),
-                        ),
+                        Some(progress) => {
+                            if progress.contains("Finished") {
+                                (
+                                    Some(Message::Command(command::Message::Stop)),
+                                    MyState::Ready(progress_receiver),
+                                )
+                            } else {
+                                (
+                                    Some(Message::EventRecieved(progress)),
+                                    MyState::Ready(progress_receiver),
+                                )
+                            }
+                        }
                         None => (None, MyState::Ready(progress_receiver)),
                     }
                 }
@@ -706,7 +715,7 @@ mod command {
                                 .expect("No Videos Directory")
                                 .to_string(),
                         );
-                        args.push("-o %(uploader)s/%(playlist)s - %(title)s.%(ext)s".to_string())
+                        args.push("-o %(playlist)s/%(title)s.%(ext)s".to_string())
                     } else {
                         args.push("--no-playlist".to_string());
                         args.push("-P".to_string());
@@ -722,27 +731,35 @@ mod command {
                         args.push("%(title)s.%(ext)s".to_string())
                     }
 
-                    self.shared_child = match SharedChild::spawn(std::process::Command::new("yt-dlp")
-                        .args(args)
-                        .stdout(Stdio::piped())) {
-                          Ok(child) => {
-                            Some(Arc::new(child))
-                        },
+                    self.shared_child = match SharedChild::spawn(
+                        std::process::Command::new("yt-dlp")
+                            .args(args)
+                            .stdout(Stdio::piped()),
+                    ) {
+                        Ok(child) => Some(Arc::new(child)),
                         Err(e) => {
                             println!("{e}");
                             None
                         }
                     };
 
-                    modal_state.show(true);
-                    if let Some(stdout) = self.shared_child.clone().unwrap().take_stdout() {
-                        let sender = Arc::new(Mutex::new(sender.unwrap()));
-                        std::thread::spawn(move || {
-                            let reader = BufReader::new(stdout);
-                            for line in reader.lines().filter_map(|line| line.ok()) {
-                                (*sender.lock().unwrap()).unbounded_send(line).unwrap();
-                            }
-                        });
+                    if let Some(child) = self.shared_child.clone() {
+                        modal_state.show(true);
+                        if let Some(stdout) = child.take_stdout() {
+                            let sender = Arc::new(Mutex::new(sender.unwrap()));
+                            std::thread::spawn(move || {
+                                let reader = BufReader::new(stdout);
+                                for line in reader.lines().filter_map(|line| line.ok()) {
+                                    (*sender.lock().unwrap()).unbounded_send(line).unwrap();
+                                }
+                                (*sender.lock().unwrap())
+                                    .unbounded_send("Finished".to_string())
+                                    .unwrap();
+                            });
+                        }
+                    } else {
+                        modal_state.show(true);
+                        *output = "yt-dlp binary is missing, add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`".to_string();
                     }
                 }
                 Message::Stop => {
@@ -750,7 +767,7 @@ mod command {
                         Ok(_) => {
                             #[cfg(debug_assertions)]
                             println!("killed the child, lmao")
-                        },
+                        }
                         Err(e) => {
                             #[cfg(debug_assertions)]
                             println!("{e}")
