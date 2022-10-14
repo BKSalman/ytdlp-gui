@@ -9,11 +9,24 @@ a GUI for yt-dlp written in Rust
 
 # Installation
 ## Linux
-1- download ``yt-dlp`` from your distribution repos or download the [binary](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp) then move it to your bin directory and make it an executable
+#### 1- download ``yt-dlp``
 
-2- download ``ffmpeg`` from your distribution repos
+a- from your distribution repo
 
-3- download the ``ytdlp-gui`` binary
+Fedora
+``sudo dnf install yt-dlp``
+
+b- or download the [binary](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp) then move it to your bin directory and make it an executable
+
+#### 2- download ``ffmpeg`` from your distribution repos
+
+Fedora
+``sudo dnf install ffmpeg``
+
+Ubuntu
+``sudo apt install ffmpeg``
+
+#### 3- download the ``ytdlp-gui`` binary
 
 ## Windows
-just download the zip file from the releases page, extract it in a subfolder and start the ``ytdlp-gui.exe``
+##### just download the zip file from the releases page, extract it in a subfolder and start the ``ytdlp-gui.exe``
