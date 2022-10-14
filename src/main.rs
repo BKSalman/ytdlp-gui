@@ -13,14 +13,8 @@ use iced::{
 use iced::Color;
 
 use iced_native::subscription;
-use std::{
-    io::{BufRead, BufReader},
-    sync::{Arc, Mutex},
-};
-use std::{
-    path::PathBuf,
-    process::{Command, Stdio},
-};
+use std::path::PathBuf;
+use std::process::Child;
 
 use iced_aw::{modal, Card, Modal, Tabs};
 
@@ -37,7 +31,6 @@ const SPACING: u16 = 10;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Download(String),
     InputChanged(String),
     TogglePlaylist(bool),
     SelectedVideoFormat(VideoFormat),
@@ -49,7 +42,7 @@ pub enum Message {
     SelectTab(usize),
     EventRecieved(String),
     Ready(UnboundedSender<String>),
-    CloseModal,
+    Command(command::Message),
 }
 
 struct YtGUI {
@@ -67,10 +60,10 @@ struct YtGUI {
     download_folder: Option<PathBuf>,
     placeholder: String,
     active_tab: usize,
-    args: Vec<String>,
     modal_state: modal::State<ModalState>,
     output: String,
     sender: Option<UnboundedSender<String>>,
+    command: command::Command,
 }
 
 impl Default for YtGUI {
@@ -90,16 +83,16 @@ impl Default for YtGUI {
             audio_quality: AudioQuality::default(),
             placeholder: "Download link".to_string(),
             active_tab: 0,
-            args: Vec::new(),
             modal_state: modal::State::default(),
             output: String::default(),
             sender: None,
+            command: command::Command::default(),
         }
     }
 }
 
 #[derive(Debug, Default)]
-struct ModalState;
+pub struct ModalState;
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Resolution {
@@ -179,130 +172,21 @@ impl Application for YtGUI {
         }
 
         match event {
-            Message::Download(link) => {
-                if self.download_link.is_empty() {
-                    self.placeholder = "No Download link was provided!".to_string();
-                    return iced::Command::none();
-                }
-
-                self.placeholder = "Download link".to_string();
-
-                self.args.push(link);
-
-                match self.active_tab {
-                    0 => {
-                        let mut video = String::new();
-                        self.args.push("-S".to_string());
-
-                        match self.resolution {
-                            Resolution::FourK => {
-                                video.push_str("res:2160,");
-                            }
-                            Resolution::TwoK => {
-                                video.push_str("res:1440,");
-                            }
-                            Resolution::FullHD => {
-                                video.push_str("res:1080,");
-                            }
-                            Resolution::Hd => {
-                                video.push_str("res:720,");
-                            }
-                            Resolution::Sd => {
-                                video.push_str("res:480,");
-                            }
-                        }
-
-                        match self.video_format {
-                            VideoFormat::Mp4 => {
-                                video.push_str("ext:mp4");
-                            }
-                            VideoFormat::ThreeGP => {
-                                video.push_str("ext:3gp");
-                            }
-                            VideoFormat::Webm => {
-                                video.push_str("ext:webm");
-                            }
-                        }
-                        self.args.push(video);
-                    }
-                    1 => {
-                        // Audio tab
-                        match self.audio_format {
-                            AudioFormat::Mp3 => {
-                                self.args.push("--format mp3".to_string());
-                            }
-                            AudioFormat::Wav => {
-                                self.args.push("--format wav".to_string());
-                            }
-                            AudioFormat::Ogg => {
-                                self.args.push("--format ogg".to_string());
-                            }
-                            AudioFormat::Opus => {
-                                self.args.push("--format opus".to_string());
-                            }
-                            AudioFormat::Webm => {
-                                self.args.push("--format webm".to_string());
-                            }
-                        }
-
-                        match self.audio_quality {
-                            AudioQuality::Best => {
-                                self.args.push("--audio-quality 10".to_string());
-                            }
-                            AudioQuality::Good => {
-                                self.args.push("--audio-quality 8".to_string());
-                            }
-                            AudioQuality::Medium => {
-                                self.args.push("--audio-quality 6".to_string());
-                            }
-                            AudioQuality::Low => {
-                                self.args.push("--audio-quality 4".to_string());
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-
-                if self.is_playlist {
-                    self.args.push(format!(
-                        "--yes-playlist -o {}/%(uploader)s/%(playlist)s - %(title)s.%(ext)s",
-                        self.download_folder
-                            .clone()
-                            .unwrap()
-                            .to_str()
-                            .expect("No Videos Directory")
-                    ))
-                } else {
-                    println!("not");
-                    self.args.push("-P".to_string());
-                    self.args.push(
-                        self.download_folder
-                            .clone()
-                            .unwrap()
-                            .to_str()
-                            .expect("No Videos Directory")
-                            .to_string(),
-                    );
-                    self.args.push("-o".to_string());
-                    self.args.push("%(title)s.%(ext)s".to_string())
-                }
-
-                if let Ok(command) = Command::new("yt-dlp")
-                    .args(self.args.clone())
-                    .stdout(Stdio::piped())
-                    .spawn()
-                {
-                    if let Some(stdout) = command.stdout {
-                        self.modal_state.show(true);
-                        let sender = Arc::new(Mutex::new(self.sender.clone().unwrap()));
-                        std::thread::spawn(move || {
-                            let reader = BufReader::new(stdout);
-                            for line in reader.lines().filter_map(|line| line.ok()) {
-                                (*sender.lock().unwrap()).unbounded_send(line).unwrap();
-                            }
-                        });
-                    }
-                }
+            Message::Command(message) => {
+                self.command.update(
+                    message,
+                    &mut self.modal_state,
+                    &mut self.placeholder,
+                    self.active_tab,
+                    self.resolution,
+                    self.video_format,
+                    self.audio_format,
+                    self.audio_quality,
+                    self.is_playlist,
+                    &mut self.download_folder,
+                    &mut self.output,
+                    self.sender.clone(),
+                );
             }
             Message::InputChanged(input) => {
                 self.download_link = input;
@@ -354,9 +238,6 @@ impl Application for YtGUI {
             }
             Message::Ready(sender) => {
                 self.sender = Some(sender);
-            }
-            Message::CloseModal => {
-                self.modal_state.show(false);
             }
         }
 
@@ -427,7 +308,9 @@ impl Application for YtGUI {
                     )
                     .push(
                         Button::new(&mut self.download_button_state, Text::new("Download"))
-                            .on_press(Message::Download(self.download_link.clone()))
+                            .on_press(Message::Command(command::Message::Run(
+                                self.download_link.clone(),
+                            )))
                             .style(self.theme),
                     )
                     .spacing(SPACING)
@@ -448,9 +331,10 @@ impl Application for YtGUI {
             )
             .style(self.theme)
             .max_width(300)
-            .on_close(Message::CloseModal)
+            .on_close(Message::Command(command::Message::Stop))
             .into()
-        }).into();
+        })
+        .into();
 
         // let content = content.explain(Color::BLACK);
 
@@ -657,6 +541,231 @@ pub fn bind() -> Subscription<Message> {
             }
         },
     )
+}
+
+pub enum ChildMessage {
+    Ready(UnboundedSender<Child>),
+    ChildEvent(Child),
+}
+
+pub enum ChildState {
+    Starting,
+    Ready(mpsc::UnboundedReceiver<Child>),
+}
+
+mod command {
+    use shared_child::SharedChild;
+    use std::{
+        io::{BufRead, BufReader},
+        path::PathBuf,
+        process::Stdio,
+        sync::{atomic::AtomicBool, Arc, Mutex},
+    };
+
+    use iced::futures::channel::mpsc::UnboundedSender;
+    use iced_aw::modal;
+
+    use crate::{AudioFormat, AudioQuality, ModalState, Resolution, VideoFormat};
+
+    #[derive(Debug, Clone)]
+    pub enum Message {
+        Run(String),
+        Stop,
+    }
+
+    pub struct Command {
+        kill_child: Arc<AtomicBool>,
+        shared_child: Option<Arc<SharedChild>>,
+    }
+
+    impl Default for Command {
+        fn default() -> Self {
+            Self {
+                kill_child: Arc::new(AtomicBool::new(false)),
+                shared_child: None,
+            }
+        }
+    }
+
+    impl Command {
+        #[allow(clippy::too_many_arguments)]
+        pub fn update(
+            &mut self,
+            message: Message,
+            modal_state: &mut modal::State<ModalState>,
+            placeholder: &mut String,
+            active_tab: usize,
+            resolution: Resolution,
+            video_format: VideoFormat,
+            audio_format: AudioFormat,
+            audio_quality: AudioQuality,
+            is_playlist: bool,
+            download_folder: &mut Option<PathBuf>,
+            output: &mut String,
+            sender: Option<UnboundedSender<String>>,
+        ) {
+            let mut args = Vec::new();
+
+            self.kill_child = Arc::new(AtomicBool::new(false));
+            match message {
+                Message::Run(link) => {
+                    if link.is_empty() {
+                        *placeholder = "No Download link was provided!".to_string();
+                        return;
+                    }
+
+                    *placeholder = "Download link".to_string();
+
+                    args.push(link);
+
+                    match active_tab {
+                        0 => {
+                            let mut video = String::new();
+                            args.push("-S".to_string());
+
+                            match resolution {
+                                Resolution::FourK => {
+                                    video.push_str("res:2160,");
+                                }
+                                Resolution::TwoK => {
+                                    video.push_str("res:1440,");
+                                }
+                                Resolution::FullHD => {
+                                    video.push_str("res:1080,");
+                                }
+                                Resolution::Hd => {
+                                    video.push_str("res:720,");
+                                }
+                                Resolution::Sd => {
+                                    video.push_str("res:480,");
+                                }
+                            }
+
+                            match video_format {
+                                VideoFormat::Mp4 => {
+                                    video.push_str("ext:mp4");
+                                }
+                                VideoFormat::ThreeGP => {
+                                    video.push_str("ext:3gp");
+                                }
+                                VideoFormat::Webm => {
+                                    video.push_str("ext:webm");
+                                }
+                            }
+                            args.push(video);
+                        }
+                        1 => {
+                            // Audio tab
+                            args.push("-x".to_string());
+                            args.push("--audio-format".to_string());
+                            match audio_format {
+                                AudioFormat::Mp3 => {
+                                    args.push("mp3".to_string());
+                                }
+                                AudioFormat::Wav => {
+                                    args.push("wav".to_string());
+                                }
+                                AudioFormat::Ogg => {
+                                    args.push("ogg".to_string());
+                                }
+                                AudioFormat::Opus => {
+                                    args.push("opus".to_string());
+                                }
+                                AudioFormat::Webm => {
+                                    args.push("webm".to_string());
+                                }
+                            }
+
+                            args.push("--audio-quality".to_string());
+                            match audio_quality {
+                                AudioQuality::Best => {
+                                    args.push("0".to_string());
+                                }
+                                AudioQuality::Good => {
+                                    args.push("2".to_string());
+                                }
+                                AudioQuality::Medium => {
+                                    args.push("4".to_string());
+                                }
+                                AudioQuality::Low => {
+                                    args.push("6".to_string());
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+
+                    if is_playlist {
+                        args.push("--yes-playlist".to_string());
+                        args.push("-P".to_string());
+                        args.push(
+                            download_folder
+                                .clone()
+                                .unwrap()
+                                .to_str()
+                                .expect("No Videos Directory")
+                                .to_string(),
+                        );
+                        args.push("-o %(uploader)s/%(playlist)s - %(title)s.%(ext)s".to_string())
+                    } else {
+                        args.push("--no-playlist".to_string());
+                        args.push("-P".to_string());
+                        args.push(
+                            download_folder
+                                .clone()
+                                .unwrap()
+                                .to_str()
+                                .expect("No Videos Directory")
+                                .to_string(),
+                        );
+                        args.push("-o".to_string());
+                        args.push("%(title)s.%(ext)s".to_string())
+                    }
+
+                    self.shared_child = match SharedChild::spawn(std::process::Command::new("yt-dlp")
+                        .args(args)
+                        .stdout(Stdio::piped())) {
+                          Ok(child) => {
+                            Some(Arc::new(child))
+                        },
+                        Err(e) => {
+                            println!("{e}");
+                            None
+                        }
+                    };
+
+                    modal_state.show(true);
+                    if let Some(stdout) = self.shared_child.clone().unwrap().take_stdout() {
+                        let sender = Arc::new(Mutex::new(sender.unwrap()));
+                        std::thread::spawn(move || {
+                            let reader = BufReader::new(stdout);
+                            for line in reader.lines().filter_map(|line| line.ok()) {
+                                (*sender.lock().unwrap()).unbounded_send(line).unwrap();
+                            }
+                        });
+                    }
+                }
+                Message::Stop => {
+                    match self.shared_child.clone().unwrap().kill() {
+                        Ok(_) => {
+                            #[cfg(debug_assertions)]
+                            println!("killed the child, lmao")
+                        },
+                        Err(e) => {
+                            #[cfg(debug_assertions)]
+                            println!("{e}")
+                        }
+                    };
+                    modal_state.show(false);
+                    output.clear();
+                }
+            }
+        }
+
+        // fn view(&self) -> Element<Message> {
+        //     ..
+        // }
+    }
 }
 
 fn main() -> iced::Result {

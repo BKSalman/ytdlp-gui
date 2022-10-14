@@ -6,9 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.65"
 iced = "0.4.2"
 iced_aw = { version = "0.2.0", features = ["tabs", "modal", "card"], default-features = false }
 iced_native = "0.5.1"
 native-dialog = "0.6.3"
-owning_ref = "0.4.1"
+shared_child = "1.0.0"
 strum = { version = "0.24.1", features = ["derive"] }
