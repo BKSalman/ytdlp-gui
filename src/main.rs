@@ -1,3 +1,8 @@
+#![cfg_attr(
+    not(debug_assertion),
+    windows_subsystem = "windows"
+)]
+
 use iced::{
     button, executor,
     futures::{

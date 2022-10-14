@@ -2,6 +2,9 @@
 name = "ytdlp-gui"
 version = "0.1.0"
 edition = "2021"
+description = "a GUI for yt-dlp written in Rust"
+license = "GPL-3.0"
+repository = "https://github.com/BKSalman/ytdlp-gui"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
