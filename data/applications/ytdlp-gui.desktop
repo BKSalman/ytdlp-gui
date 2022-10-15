@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Youtube Downloader
+GenericName=Downloader
+Comment=Download youtube videos/audio
+Exec=ytdlp-gui
+Icon=ytdlp-gui
+Terminal=false
+Type=Application
+Categories=Video;Audio;
