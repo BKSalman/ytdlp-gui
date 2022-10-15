@@ -19,11 +19,21 @@ native-dialog = "0.6.3"
 shared_child = "1.0.0"
 strum = { version = "0.24.1", features = ["derive"] }
 
-[package.metadata.rpm]
-package = "ytdlp-gui"
+[package.metadata.generate-rpm]
+assets = [
+  { source = "target/release/ytdlp-gui", dest = "/usr/bin/ytdlp-gui", mode = "755" },
+  { source = "data/applications/ytdlp-gui.desktop", dest = "/usr/share/applications/ytdlp-gui.desktop", mode = "644" },
+  { source = "data/icons/*/apps/ytdlp-gui.png", dest = "/usr/share/icons/hicolor/", mode = "644" },
+]
 
-[package.metadata.rpm.cargo]
-buildflags = ["--release"]
+[package.metadata.generate-rpm.requires]
+yt-dlp = "*"
+ffmpeg = "*"
 
-[package.metadata.rpm.targets]
-ytdlp-gui = { path = "/usr/bin/ytdlp-gui" }
+[package.metadata.deb]
+depends = "yt-dlp ffmpeg"
+assets = [
+    ["target/release/ytdlp-gui", "usr/bin/", "755"],
+    ["data/applications/ytdlp-gui.desktop", "usr/share/applications/", "644"],
+    ["data/icons/*/apps/ytdlp-gui.png", "usr/share/icons/hicolor/", "644"],
+]
