@@ -9,19 +9,19 @@ a GUI for yt-dlp written in Rust
 
 # Installation
 ## Linux
+
+### Fedora
+download the rpm package from the releases page then install it with ``sudo dnf localinstall <rpm_package_name>``
+
+### other distributions
+
 #### 1- download ``yt-dlp``
 
 a- from your distribution repo
 
-Fedora
-``sudo dnf install yt-dlp``
-
 b- or download the [binary](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp) then move it to your bin directory and make it an executable
 
 #### 2- download ``ffmpeg`` from your distribution repos
-
-Fedora
-``sudo dnf install ffmpeg``
 
 Ubuntu
 ``sudo apt install ffmpeg``
