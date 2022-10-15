@@ -13,6 +13,9 @@ a GUI for yt-dlp written in Rust
 ### Fedora
 download the rpm package from the releases page then install it with ``sudo dnf localinstall <rpm_package_name>``
 
+### Ubuntu
+download the deb package from the releases page then install it with ``sudo apt install <deb_package_name>``
+
 ### other distributions
 
 #### 1- download ``yt-dlp``
