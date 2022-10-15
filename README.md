@@ -14,7 +14,7 @@ a GUI for yt-dlp written in Rust
 download the rpm package from the releases page then install it with ``sudo dnf localinstall <rpm_package_name>``
 
 ### Ubuntu
-download the deb package from the releases page then install it with ``sudo apt install <deb_package_name>``
+download the deb package from the releases page then install it with ``sudo apt install ./<deb_package_name>``
 
 ### other distributions
 
