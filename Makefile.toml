@@ -1,0 +1,63 @@
+[tasks.myclean]
+description = "Clean previous build files"
+script = [
+  "rm -f packages/* | tr '\n' ','"
+]
+
+[tasks.linux_build]
+description = "Build for linux"
+command = "cargo"
+args = ["build", "--release", "--target", "x86_64-unknown-linux-gnu"]
+
+[tasks.windows_build]
+description = "Build for windows"
+command = "cargo"
+args = ["build", "--release", "--target", "x86_64-pc-windows-gnu"]
+
+[tasks.rpm_build]
+description = "Build for windows"
+install_crate = "cargo-rpm"
+command = "cargo"
+args = ["rpm", "build"]
+
+[tasks.deb_build]
+description = "Build for windows"
+install_crate = "cargo-deb"
+command = "cargo"
+args = ["deb", "--target", "x86_64-unknown-linux-gnu"]
+
+[tasks.package_linux]
+description = "Add the linux binary to the packages directory"
+dependencies = ["linux_build"]
+script = [
+  "mv -f target/x86_64-unknown-linux-gnu/release/ytdlp-gui packages/ytdlp-gui-linux-x64-86"
+]
+
+# move everything that has the extension name, and remove the version name or find a way to get it
+
+[tasks.package_deb]
+description = "Add the deb package to the packages directory"
+dependencies = ["deb_build"]
+script = [
+  "mv -f target/x86_64-unknown-linux-gnu/debian/*.deb packages/"
+]
+
+[tasks.package_rpm]
+description = "Add the rpm package to the packages directory"
+dependencies = ["rpm_build"]
+script = [
+  "mv -f target/release/rpmbuild/RPMS/x86_64/*.rpm packages/"
+]
+
+[tasks.package_windows]
+description = "Package ffmpeg and yt-dlp and compress it with the app binary for windows"
+dependencies = ["windows_build"]
+script = [
+  "mkdir -p windows", 
+  "mv -f target/x86_64-pc-windows-gnu/release/ytdlp-gui.exe windows",
+  "zip -r packages/ytdlp-gui-windows-64.zip windows/"
+]
+
+
+[tasks.packages]
+dependencies = ["myclean", "package_linux", "package_deb", "package_rpm", "package_windows"]

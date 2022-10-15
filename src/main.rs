@@ -773,7 +773,7 @@ mod command {
                             #[cfg(debug_assertions)]
                             println!("killed the child, lmao")
                         }
-                        Err(e) => {
+                        Err(_e) => {
                             #[cfg(debug_assertions)]
                             println!("{e}")
                         }

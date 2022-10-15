@@ -1,2 +1,5 @@
 /target
-/packages
+packages
+packages/*
+windows
+windows/*

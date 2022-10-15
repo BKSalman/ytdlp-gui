@@ -5,6 +5,8 @@ edition = "2021"
 description = "a GUI for yt-dlp written in Rust"
 license = "GPL-3.0"
 repository = "https://github.com/BKSalman/ytdlp-gui"
+readme = "README.md"
+authors = ["Salman"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -16,3 +18,12 @@ iced_native = "0.5.1"
 native-dialog = "0.6.3"
 shared_child = "1.0.0"
 strum = { version = "0.24.1", features = ["derive"] }
+
+[package.metadata.rpm]
+package = "ytdlp-gui"
+
+[package.metadata.rpm.cargo]
+buildflags = ["--release"]
+
+[package.metadata.rpm.targets]
+ytdlp-gui = { path = "/usr/bin/ytdlp-gui" }
