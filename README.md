@@ -24,7 +24,7 @@ a- from your distribution repo
 
 b- or download the [binary](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp) then move it to your bin directory and make it an executable
 
-#### 2- download ``ffmpeg`` from your distribution repos
+#### 2- download ``ffmpeg`` or ``ffmpeg-free`` from your distribution repos
 
 Ubuntu
 ``sudo apt install ffmpeg``
