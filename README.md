@@ -26,8 +26,6 @@ b- or download the [binary](https://github.com/yt-dlp/yt-dlp/releases/latest/dow
 
 #### 2- download ``ffmpeg`` or ``ffmpeg-free`` from your distribution repos
 
-Ubuntu
-``sudo apt install ffmpeg``
 
 #### 3- download the ``ytdlp-gui`` binary
 
