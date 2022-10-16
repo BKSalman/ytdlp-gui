@@ -28,10 +28,10 @@ assets = [
 
 [package.metadata.generate-rpm.requires]
 yt-dlp = "*"
-ffmpeg = "*"
+ffmpeg-free = "*"
 
 [package.metadata.deb]
-depends = "yt-dlp ffmpeg"
+depends = "yt-dlp, ffmpeg"
 assets = [
     ["target/release/ytdlp-gui", "usr/bin/", "755"],
     ["data/applications/ytdlp-gui.desktop", "usr/share/applications/", "644"],
