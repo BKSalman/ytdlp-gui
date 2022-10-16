@@ -14,7 +14,7 @@ a GUI for yt-dlp written in Rust
 download the rpm package from the releases page then install it with ``sudo dnf localinstall <rpm_package_name>``
 
 ### Ubuntu
-download the deb package from the releases page then install it with ``sudo apt install <deb_package_name>``
+download the deb package from the releases page then install it with ``sudo apt install ./<deb_package_name>``
 
 ### other distributions
 
@@ -24,7 +24,7 @@ a- from your distribution repo
 
 b- or download the [binary](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp) then move it to your bin directory and make it an executable
 
-#### 2- download ``ffmpeg`` from your distribution repos
+#### 2- download ``ffmpeg`` or ``ffmpeg-free`` from your distribution repos
 
 Ubuntu
 ``sudo apt install ffmpeg``
