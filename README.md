@@ -27,7 +27,7 @@ b- or download the [binary](https://github.com/yt-dlp/yt-dlp/releases/latest/dow
 #### 2- download ``ffmpeg`` or ``ffmpeg-free`` from your distribution repos
 
 
-#### 3- download the ``ytdlp-gui`` binary
+#### 3- download the ``ytdlp-gui`` binary from the [realeases page](https://github.com/BKSalman/ytdlp-gui/releases)
 
 ## Windows
 ##### just download the zip file from the releases page, extract it in a subfolder and start the ``ytdlp-gui.exe``
