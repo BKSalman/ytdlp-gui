@@ -30,19 +30,24 @@ install_crate = "cargo-deb"
 command = "cargo"
 args = ["deb"]
 
-[tasks.package_linux]
-description = "Add the linux binary to the packages directory"
+[tasks.aur_build]
+description = "Build tarbell and PKGBUILD"
+install_crate = "cargo-aur"
 dependencies = ["linux_build"]
-script = [
-  "mv -f target/release/ytdlp-gui packages/ytdlp-gui-linux-x64-86"
-]
+command = "cargo"
+args = ["aur"]
 
 [tasks.windows_build]
 description = "Build for windows"
 command = "cargo"
 args = ["build", "--release", "--target", "x86_64-pc-windows-gnu"]
 
-# move everything that has the extension name, and remove the version name or find a way to get it
+[tasks.package_linux]
+description = "Add the linux binary to the packages directory"
+dependencies = ["linux_build"]
+script = [
+  "mv -f target/release/ytdlp-gui packages/ytdlp-gui-linux-x64-86"
+]
 
 [tasks.package_deb]
 description = "Add the deb package to the packages directory"
@@ -58,6 +63,14 @@ script = [
   "mv -f target/generate-rpm/*.rpm packages/"
 ]
 
+[tasks.package_aur]
+description = "Add the rpm package to the packages directory"
+dependencies = ["aur_build"]
+script = [
+  "mv -f PKGBUILD packages/",
+  "mv -f *.tar.gz packages/"
+]
+
 [tasks.package_windows]
 description = "Package ffmpeg and yt-dlp and compress it with the app binary for windows"
 dependencies = ["windows_build"]
@@ -69,4 +82,4 @@ script = [
 
 
 [tasks.packages]
-dependencies = ["myclean", "package_rpm", "package_deb", "package_linux", "package_windows"]
+dependencies = ["myclean", "package_rpm", "package_deb", "package_aur", "package_linux", "package_windows"]

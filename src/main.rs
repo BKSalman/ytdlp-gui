@@ -34,6 +34,8 @@ const FONT_SIZE: u16 = 18;
 
 const SPACING: u16 = 10;
 
+const RADIO_DOT_SIZE: u16 = 15;
+
 #[derive(Debug, Clone)]
 pub enum Message {
     InputChanged(String),
@@ -367,7 +369,7 @@ impl YtGUI {
                     Some(resolution),
                     Message::SelectedResolution,
                 )
-                .size(19)
+                .size(RADIO_DOT_SIZE)
                 .text_size(FONT_SIZE)
                 .style(theme),
             )
@@ -378,7 +380,7 @@ impl YtGUI {
                     Some(resolution),
                     Message::SelectedResolution,
                 )
-                .size(19)
+                .size(RADIO_DOT_SIZE)
                 .text_size(FONT_SIZE)
                 .style(theme),
             )
@@ -389,7 +391,7 @@ impl YtGUI {
                     Some(resolution),
                     Message::SelectedResolution,
                 )
-                .size(19)
+                .size(RADIO_DOT_SIZE)
                 .text_size(FONT_SIZE)
                 .style(theme),
             )
@@ -400,7 +402,7 @@ impl YtGUI {
                     Some(resolution),
                     Message::SelectedResolution,
                 )
-                .size(19)
+                .size(RADIO_DOT_SIZE)
                 .text_size(FONT_SIZE)
                 .style(theme),
             )
@@ -411,7 +413,7 @@ impl YtGUI {
                     Some(resolution),
                     Message::SelectedResolution,
                 )
-                .size(19)
+                .size(RADIO_DOT_SIZE)
                 .text_size(FONT_SIZE)
                 .style(theme),
             )
@@ -430,7 +432,7 @@ impl YtGUI {
                     Some(format),
                     Message::SelectedVideoFormat,
                 )
-                .size(19)
+                .size(RADIO_DOT_SIZE)
                 .text_size(FONT_SIZE)
                 .style(theme),
             )
@@ -441,7 +443,7 @@ impl YtGUI {
                     Some(format),
                     Message::SelectedVideoFormat,
                 )
-                .size(19)
+                .size(RADIO_DOT_SIZE)
                 .text_size(FONT_SIZE)
                 .style(theme),
             )
@@ -452,7 +454,7 @@ impl YtGUI {
                     Some(format),
                     Message::SelectedVideoFormat,
                 )
-                .size(19)
+                .size(RADIO_DOT_SIZE)
                 .text_size(FONT_SIZE)
                 .style(theme),
             )
@@ -475,7 +477,7 @@ impl YtGUI {
                                 Some(format),
                                 Message::SelectedAudioFormat,
                             )
-                            .size(19)
+                            .size(RADIO_DOT_SIZE)
                             .text_size(FONT_SIZE)
                             .style(theme),
                         )
@@ -502,7 +504,7 @@ impl YtGUI {
                                 Some(quality),
                                 Message::SelectedAudioQuality,
                             )
-                            .size(19)
+                            .size(RADIO_DOT_SIZE)
                             .text_size(FONT_SIZE)
                             .style(theme),
                         )
@@ -775,7 +777,7 @@ mod command {
                         }
                         Err(_e) => {
                             #[cfg(debug_assertions)]
-                            println!("{e}")
+                            println!("{_e}")
                         }
                     };
                     modal_state.show(false);
@@ -792,6 +794,7 @@ mod command {
 
 fn main() -> iced::Result {
     let settings = Settings {
+        id: Some("ytdlp-gui".to_string()),
         window: window::Settings {
             size: (600, 275),
             resizable: false,

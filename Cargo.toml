@@ -5,6 +5,7 @@ edition = "2021"
 description = "a GUI for yt-dlp written in Rust"
 license = "GPL-3.0"
 repository = "https://github.com/BKSalman/ytdlp-gui"
+homepage = "https://github.com/BKSalman"
 readme = "README.md"
 authors = ["Salman"]
 
@@ -28,7 +29,7 @@ assets = [
 
 [package.metadata.generate-rpm.requires]
 yt-dlp = "*"
-ffmpeg-free = "*"
+"(ffmpeg or ffmpeg-free)" = "*"
 
 [package.metadata.deb]
 depends = "yt-dlp, ffmpeg"
@@ -37,3 +38,6 @@ assets = [
     ["data/applications/ytdlp-gui.desktop", "usr/share/applications/", "644"],
     ["data/icons/*/apps/ytdlp-gui.png", "usr/share/icons/hicolor/", "644"],
 ]
+
+[package.metadata.aur]
+depends = ["ffmpeg", "yt-dlp"]
