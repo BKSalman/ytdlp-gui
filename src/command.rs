@@ -9,7 +9,7 @@ use std::{
 use iced::futures::channel::mpsc::UnboundedSender;
 use iced_aw::modal;
 
-use crate::{AudioFormat, AudioQuality, ModalState, Resolution, VideoFormat};
+use crate::{AudioFormat, AudioQuality, ModalState, Resolution, VideoFormat, ProgressState};
 
 #[cfg(target_os = "windows")]
 use crate::CREATE_NO_WINDOW;
@@ -18,6 +18,7 @@ use crate::CREATE_NO_WINDOW;
 pub enum Message {
     Run(String),
     Stop,
+    Finished,
 }
 
 pub struct Command {
@@ -50,6 +51,7 @@ impl Command {
         download_folder: &mut Option<PathBuf>,
         output: &mut String,
         progress: &mut f32,
+        progress_state: &mut ProgressState,
         sender: Option<UnboundedSender<String>>,
     ) {
         let mut args = Vec::new();
@@ -156,8 +158,11 @@ impl Command {
                     );
                     args.push("-o %(playlist)s/%(title)s.%(ext)s".to_string())
                 } else {
-                    args.push("--no-playlist".to_string());
-                    args.push("-P".to_string());
+                    args.push(String::from("--break-on-reject"));
+                    args.push(String::from("--match-filter"));
+                    args.push(String::from("!playlist"));
+                    args.push(String::from("--no-playlist"));
+                    args.push(String::from("-P"));
                     args.push(
                         download_folder
                             .clone()
@@ -195,15 +200,13 @@ impl Command {
                         let sender = Arc::new(Mutex::new(sender.clone().unwrap()));
                         std::thread::spawn(move || {
                             let reader = BufReader::new(stderr);
-                            for line in reader.lines() {
-                                if let Ok(line) = line {
+                            for line in reader.lines().flatten() {
                                     (*sender.lock().unwrap())
                                         .unbounded_send(line)
                                         .unwrap_or_else(|_e| {
                                             #[cfg(debug_assertions)]
                                             println!("{_e}")
                                         });
-                                }
                             }
                         });
                     }
@@ -260,8 +263,27 @@ impl Command {
                     }
                 };
                 modal_state.show(false);
+                *progress_state = ProgressState::HideText;
                 *progress = 0.;
                 output.clear();
+            }
+            Message::Finished => {
+                match self.shared_child.clone().unwrap().kill() {
+                    Ok(_) => {
+                        #[cfg(debug_assertions)]
+                        println!("killed the child, lmao")
+                    }
+                    Err(_e) => {
+                        #[cfg(debug_assertions)]
+                        println!("{_e}")
+                    }
+                };
+                *progress = 0.;
+                *progress_state = ProgressState::HideText;
+                if output.contains("Already") {
+                    return;
+                }
+                *output = String::from("Finished!");
             }
         }
     }

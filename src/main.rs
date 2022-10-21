@@ -51,7 +51,7 @@ pub enum Message {
     EventRecieved(String),
     Ready(UnboundedSender<String>),
     Command(command::Message),
-    IcedEvent(iced_native::Event)
+    IcedEvent(iced_native::Event),
 }
 
 struct YtGUI {
@@ -75,6 +75,7 @@ struct YtGUI {
     command: command::Command,
     progress: f32,
     should_exit: bool,
+    progress_state: ProgressState,
 }
 
 impl Default for YtGUI {
@@ -100,8 +101,14 @@ impl Default for YtGUI {
             command: command::Command::default(),
             progress: 0.,
             should_exit: false,
+            progress_state: ProgressState::HideText,
         }
     }
+}
+
+pub enum ProgressState {
+    ShowText,
+    HideText,
 }
 
 #[derive(Debug, Default)]
@@ -199,6 +206,7 @@ impl Application for YtGUI {
                     &mut self.download_folder,
                     &mut self.output,
                     &mut self.progress,
+                    &mut self.progress_state,
                     self.sender.clone(),
                 );
             }
@@ -243,50 +251,58 @@ impl Application for YtGUI {
                 self.audio_quality = quality;
             }
             Message::EventRecieved(progress) => {
-                if progress.contains("%") {
+                if self.progress == 100. {
+                    self.output = String::from("Processing...");
+                    return iced::Command::none();
+                }
+
+                if progress.contains('%') {
+                    self.progress_state = ProgressState::HideText;
+
                     let words = progress
                         .split(' ')
                         .map(String::from)
                         .filter(|str| str.chars().filter(|char| char.is_numeric()).count() != 0)
                         .collect::<Vec<String>>();
 
-                    if let Ok(percentage) = words[0].trim_end_matches("%").parse::<f32>() {
+                    if let Ok(percentage) = words[0].trim_end_matches('%').parse::<f32>() {
                         self.progress = percentage;
                     }
-                    
-                    if self.progress == 100. {
-                        self.output = String::from("Processing...");
-                        return iced::Command::none();
-                    }
-                    
+
                     self.output = words[1..].join(" | ");
 
                     return iced::Command::none();
                 } else if progress.contains("[ExtractAudio]") {
-                    self.output = "Extracting Audio".to_string();
+                    self.output = String::from("Extracting audio");
+                    self.progress_state = ProgressState::HideText;
                     return iced::Command::none();
-
-                } else if progress.ends_with("has already been downloaded") {
-                    self.output = "has already been downloaded".to_string();
+                } else if progress.contains("has already been downloaded") {
+                    self.output = String::from("Already downloaded");
+                    self.progress_state = ProgressState::HideText;
+                    return iced::Command::none();
+                } else if progress.contains("Encountered a video that did not match filter") {
+                    self.output =
+                        String::from("Playlist box needs to be checked to download a playlist");
+                    self.progress_state = ProgressState::HideText;
                     return iced::Command::none();
                 }
-                self.output = progress;
+                #[cfg(debug_assertions)]
+                println!("{progress}");
             }
             Message::Ready(sender) => {
                 self.sender = Some(sender);
             }
             Message::IcedEvent(event) => {
-                match event {
-                    iced_native::Event::Window(iced_native::window::Event::CloseRequested)=> {
-                        if let Some(child) = self.command.shared_child.clone() {
-                            if child.kill().is_ok() {
-                                #[cfg(debug_assertions)]
-                                println!("killed the child lmao");
-                            }
+                if let iced_native::Event::Window(iced_native::window::Event::CloseRequested) =
+                    event
+                {
+                    if let Some(child) = self.command.shared_child.clone() {
+                        if child.kill().is_ok() {
+                            #[cfg(debug_assertions)]
+                            println!("killed the child lmao");
                         }
-                        self.should_exit = true;
                     }
-                    _ => {}
+                    self.should_exit = true;
                 }
             }
         }
@@ -373,19 +389,24 @@ impl Application for YtGUI {
             .into();
 
         let content: Element<_> = Modal::new(&mut self.modal_state, content, |_state| {
+            let progress_bar_row = Row::new();
+
             Card::new(
                 Text::new("Downloading").horizontal_alignment(iced::alignment::Horizontal::Center),
                 Column::new()
+                    .width(Length::Fill)
                     .push(
-                        Row::new()
-                            .height(Length::FillPortion(1))
-                            .push(Text::new(self.output.clone())),
+                        Row::new().height(Length::Fill).push(
+                            Text::new(self.output.clone())
+                                .horizontal_alignment(iced::alignment::Horizontal::Center),
+                        ),
                     )
-                    .push(
-                        Row::new()
-                            .height(Length::FillPortion(1))
-                            .push(ProgressBar::new(0.0..=100., self.progress)),
-                    )
+                    .push(match self.progress_state {
+                        ProgressState::ShowText => progress_bar_row
+                            .push(ProgressBar::new(0.0..=100., self.progress))
+                            .height(Length::Fill),
+                        ProgressState::HideText => progress_bar_row.height(Length::Shrink),
+                    })
                     .align_items(iced::Alignment::Center),
             )
             .style(self.theme)
@@ -410,7 +431,7 @@ impl Application for YtGUI {
         let iced_events = subscription::events().map(Message::IcedEvent);
         Subscription::batch(vec![bind(), iced_events])
     }
-    
+
     fn should_exit(&self) -> bool {
         self.should_exit
     }
@@ -599,7 +620,7 @@ pub fn bind() -> Subscription<Message> {
                         Some(progress) => {
                             if progress.contains("Finished") {
                                 (
-                                    Some(Message::Command(command::Message::Stop)),
+                                    Some(Message::Command(command::Message::Finished)),
                                     MyState::Ready(progress_receiver),
                                 )
                             } else {
@@ -628,7 +649,6 @@ pub enum ChildState {
 }
 
 fn main() -> iced::Result {
-    
     let settings = Settings {
         id: Some("ytdlp-gui".to_string()),
         window: window::Settings {
