@@ -245,7 +245,7 @@ impl Command {
                     }
                 } else {
                     modal_state.show(true);
-                    *output = "yt-dlp binary is missing, add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`".to_string();
+                    *output = String::from("yt-dlp binary is missing, add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`");
                 }
             }
             Message::Stop => {

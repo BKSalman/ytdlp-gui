@@ -374,7 +374,7 @@ impl Application for YtGUI {
 
         let content: Element<_> = Modal::new(&mut self.modal_state, content, |_state| {
             Card::new(
-                Text::new("Progress"),
+                Text::new("Downloading").horizontal_alignment(iced::alignment::Horizontal::Center),
                 Column::new()
                     .push(
                         Row::new()
@@ -389,7 +389,7 @@ impl Application for YtGUI {
                     .align_items(iced::Alignment::Center),
             )
             .style(self.theme)
-            .max_height(100)
+            .max_height(70)
             .max_width(300)
             .on_close(Message::Command(command::Message::Stop))
             .into()
