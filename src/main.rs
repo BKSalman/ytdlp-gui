@@ -1,7 +1,4 @@
-#![cfg_attr(
-    not(debug_assertion),
-    windows_subsystem = "windows"
-)]
+#![cfg_attr(not(debug_assertion), windows_subsystem = "windows")]
 
 use iced::{
     button, executor,
@@ -29,6 +26,9 @@ use strum::Display;
 
 mod theme;
 use theme::Theme;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 const FONT_SIZE: u16 = 18;
 
@@ -581,7 +581,7 @@ mod command {
     use iced::futures::channel::mpsc::UnboundedSender;
     use iced_aw::modal;
 
-    use crate::{AudioFormat, AudioQuality, ModalState, Resolution, VideoFormat};
+    use crate::{AudioFormat, AudioQuality, ModalState, Resolution, VideoFormat, CREATE_NO_WINDOW};
 
     #[derive(Debug, Clone)]
     pub enum Message {
@@ -738,17 +738,21 @@ mod command {
                         args.push("%(title)s.%(ext)s".to_string())
                     }
 
-                    self.shared_child = match SharedChild::spawn(
-                        std::process::Command::new("yt-dlp")
-                            .args(args)
-                            .stdout(Stdio::piped()),
-                    ) {
-                        Ok(child) => Some(Arc::new(child)),
-                        Err(e) => {
-                            println!("{e}");
-                            None
-                        }
-                    };
+                    let mut command = std::process::Command::new("yt-dlp");
+
+                    #[cfg(target_os = "windows")]
+                        use std::os::windows::process::CommandExt;
+                    #[cfg(target_os = "windows")]
+                        command.creation_flags(CREATE_NO_WINDOW);
+
+                    self.shared_child =
+                        match SharedChild::spawn(command.args(args).stdout(Stdio::piped())) {
+                            Ok(child) => Some(Arc::new(child)),
+                            Err(e) => {
+                                println!("{e}");
+                                None
+                            }
+                        };
 
                     if let Some(child) = self.shared_child.clone() {
                         modal_state.show(true);
