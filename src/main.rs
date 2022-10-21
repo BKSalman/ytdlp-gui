@@ -1,5 +1,4 @@
 #![cfg_attr(not(debug_assertion), windows_subsystem = "windows")]
-
 use iced::{
     button, executor,
     futures::{
@@ -7,8 +6,8 @@ use iced::{
         StreamExt,
     },
     text_input::State,
-    window, Application, Button, Checkbox, Column, Container, Element, Length, Radio, Row,
-    Settings, Subscription, Text, TextInput,
+    window, Application, Button, Checkbox, Column, Container, Element, Length, ProgressBar, Radio,
+    Row, Settings, Subscription, Text, TextInput,
 };
 
 #[allow(unused_imports)]
@@ -24,7 +23,9 @@ use native_dialog::FileDialog;
 
 use strum::Display;
 
+mod command;
 mod theme;
+
 use theme::Theme;
 
 #[cfg(target_os = "windows")]
@@ -50,6 +51,7 @@ pub enum Message {
     EventRecieved(String),
     Ready(UnboundedSender<String>),
     Command(command::Message),
+    IcedEvent(iced_native::Event)
 }
 
 struct YtGUI {
@@ -71,6 +73,8 @@ struct YtGUI {
     output: String,
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
+    progress: f32,
+    should_exit: bool,
 }
 
 impl Default for YtGUI {
@@ -94,6 +98,8 @@ impl Default for YtGUI {
             output: String::default(),
             sender: None,
             command: command::Command::default(),
+            progress: 0.,
+            should_exit: false,
         }
     }
 }
@@ -236,8 +242,21 @@ impl Application for YtGUI {
                 self.audio_quality = quality;
             }
             Message::EventRecieved(progress) => {
-                println!("{}", &progress);
-                if progress.ends_with("has already been downloaded") {
+                if progress.contains("%") {
+                    let words = progress
+                        .split(' ')
+                        .map(String::from)
+                        .filter(|str| str.chars().filter(|char| char.is_numeric()).count() != 0)
+                        .collect::<Vec<String>>();
+
+                    if let Ok(percentage) = words[0].trim_end_matches("%").parse::<f32>() {
+                        self.progress = percentage;
+                    }
+
+                    self.output = words[1..].join(" | ");
+
+                    return iced::Command::none();
+                } else if progress.ends_with("has already been downloaded") {
                     self.output = "has already been downloaded".to_string();
                     return iced::Command::none();
                 }
@@ -245,6 +264,20 @@ impl Application for YtGUI {
             }
             Message::Ready(sender) => {
                 self.sender = Some(sender);
+            }
+            Message::IcedEvent(event) => {
+                match event {
+                    iced_native::Event::Window(iced_native::window::Event::CloseRequested)=> {
+                        if let Some(child) = self.command.shared_child.clone() {
+                            if child.kill().is_ok() {
+                                #[cfg(debug_assertions)]
+                                println!("killed the child lmao");
+                            }
+                        }
+                        self.should_exit = true;
+                    }
+                    _ => {}
+                }
             }
         }
 
@@ -331,12 +364,22 @@ impl Application for YtGUI {
 
         let content: Element<_> = Modal::new(&mut self.modal_state, content, |_state| {
             Card::new(
-                Text::new("My modal"),
-                Row::new()
-                    .push(Text::new(self.output.clone()))
+                Text::new("Progress"),
+                Column::new()
+                    .push(
+                        Row::new()
+                            .height(Length::FillPortion(1))
+                            .push(Text::new(self.output.clone())),
+                    )
+                    .push(
+                        Row::new()
+                            .height(Length::FillPortion(1))
+                            .push(ProgressBar::new(0.0..=100., self.progress)),
+                    )
                     .align_items(iced::Alignment::Center),
             )
             .style(self.theme)
+            .max_height(100)
             .max_width(300)
             .on_close(Message::Command(command::Message::Stop))
             .into()
@@ -354,7 +397,12 @@ impl Application for YtGUI {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        bind()
+        let iced_events = subscription::events().map(Message::IcedEvent);
+        Subscription::batch(vec![bind(), iced_events])
+    }
+    
+    fn should_exit(&self) -> bool {
+        self.should_exit
     }
 }
 
@@ -569,234 +617,8 @@ pub enum ChildState {
     Ready(mpsc::UnboundedReceiver<Child>),
 }
 
-mod command {
-    use shared_child::SharedChild;
-    use std::{
-        io::{BufRead, BufReader},
-        path::PathBuf,
-        process::Stdio,
-        sync::{atomic::AtomicBool, Arc, Mutex},
-    };
-
-    use iced::futures::channel::mpsc::UnboundedSender;
-    use iced_aw::modal;
-
-    use crate::{AudioFormat, AudioQuality, ModalState, Resolution, VideoFormat, CREATE_NO_WINDOW};
-
-    #[derive(Debug, Clone)]
-    pub enum Message {
-        Run(String),
-        Stop,
-    }
-
-    pub struct Command {
-        kill_child: Arc<AtomicBool>,
-        shared_child: Option<Arc<SharedChild>>,
-    }
-
-    impl Default for Command {
-        fn default() -> Self {
-            Self {
-                kill_child: Arc::new(AtomicBool::new(false)),
-                shared_child: None,
-            }
-        }
-    }
-
-    impl Command {
-        #[allow(clippy::too_many_arguments)]
-        pub fn update(
-            &mut self,
-            message: Message,
-            modal_state: &mut modal::State<ModalState>,
-            placeholder: &mut String,
-            active_tab: usize,
-            resolution: Resolution,
-            video_format: VideoFormat,
-            audio_format: AudioFormat,
-            audio_quality: AudioQuality,
-            is_playlist: bool,
-            download_folder: &mut Option<PathBuf>,
-            output: &mut String,
-            sender: Option<UnboundedSender<String>>,
-        ) {
-            let mut args = Vec::new();
-
-            self.kill_child = Arc::new(AtomicBool::new(false));
-            match message {
-                Message::Run(link) => {
-                    if link.is_empty() {
-                        *placeholder = "No Download link was provided!".to_string();
-                        return;
-                    }
-
-                    *placeholder = "Download link".to_string();
-
-                    args.push(link);
-
-                    match active_tab {
-                        0 => {
-                            let mut video = String::new();
-                            args.push("-S".to_string());
-
-                            match resolution {
-                                Resolution::FourK => {
-                                    video.push_str("res:2160,");
-                                }
-                                Resolution::TwoK => {
-                                    video.push_str("res:1440,");
-                                }
-                                Resolution::FullHD => {
-                                    video.push_str("res:1080,");
-                                }
-                                Resolution::Hd => {
-                                    video.push_str("res:720,");
-                                }
-                                Resolution::Sd => {
-                                    video.push_str("res:480,");
-                                }
-                            }
-
-                            match video_format {
-                                VideoFormat::Mp4 => {
-                                    video.push_str("ext:mp4");
-                                }
-                                VideoFormat::ThreeGP => {
-                                    video.push_str("ext:3gp");
-                                }
-                                VideoFormat::Webm => {
-                                    video.push_str("ext:webm");
-                                }
-                            }
-                            args.push(video);
-                        }
-                        1 => {
-                            // Audio tab
-                            args.push("-x".to_string());
-                            args.push("--audio-format".to_string());
-                            match audio_format {
-                                AudioFormat::Mp3 => {
-                                    args.push("mp3".to_string());
-                                }
-                                AudioFormat::Wav => {
-                                    args.push("wav".to_string());
-                                }
-                                AudioFormat::Ogg => {
-                                    args.push("ogg".to_string());
-                                }
-                                AudioFormat::Opus => {
-                                    args.push("opus".to_string());
-                                }
-                                AudioFormat::Webm => {
-                                    args.push("webm".to_string());
-                                }
-                            }
-
-                            args.push("--audio-quality".to_string());
-                            match audio_quality {
-                                AudioQuality::Best => {
-                                    args.push("0".to_string());
-                                }
-                                AudioQuality::Good => {
-                                    args.push("2".to_string());
-                                }
-                                AudioQuality::Medium => {
-                                    args.push("4".to_string());
-                                }
-                                AudioQuality::Low => {
-                                    args.push("6".to_string());
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-
-                    if is_playlist {
-                        args.push("--yes-playlist".to_string());
-                        args.push("-P".to_string());
-                        args.push(
-                            download_folder
-                                .clone()
-                                .unwrap()
-                                .to_str()
-                                .expect("No Videos Directory")
-                                .to_string(),
-                        );
-                        args.push("-o %(playlist)s/%(title)s.%(ext)s".to_string())
-                    } else {
-                        args.push("--no-playlist".to_string());
-                        args.push("-P".to_string());
-                        args.push(
-                            download_folder
-                                .clone()
-                                .unwrap()
-                                .to_str()
-                                .expect("No Videos Directory")
-                                .to_string(),
-                        );
-                        args.push("-o".to_string());
-                        args.push("%(title)s.%(ext)s".to_string())
-                    }
-
-                    let mut command = std::process::Command::new("yt-dlp");
-
-                    #[cfg(target_os = "windows")]
-                        use std::os::windows::process::CommandExt;
-                    #[cfg(target_os = "windows")]
-                        command.creation_flags(CREATE_NO_WINDOW);
-
-                    self.shared_child =
-                        match SharedChild::spawn(command.args(args).stdout(Stdio::piped())) {
-                            Ok(child) => Some(Arc::new(child)),
-                            Err(e) => {
-                                println!("{e}");
-                                None
-                            }
-                        };
-
-                    if let Some(child) = self.shared_child.clone() {
-                        modal_state.show(true);
-                        if let Some(stdout) = child.take_stdout() {
-                            let sender = Arc::new(Mutex::new(sender.unwrap()));
-                            std::thread::spawn(move || {
-                                let reader = BufReader::new(stdout);
-                                for line in reader.lines().filter_map(|line| line.ok()) {
-                                    (*sender.lock().unwrap()).unbounded_send(line).unwrap();
-                                }
-                                (*sender.lock().unwrap())
-                                    .unbounded_send("Finished".to_string())
-                                    .unwrap();
-                            });
-                        }
-                    } else {
-                        modal_state.show(true);
-                        *output = "yt-dlp binary is missing, add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`".to_string();
-                    }
-                }
-                Message::Stop => {
-                    match self.shared_child.clone().unwrap().kill() {
-                        Ok(_) => {
-                            #[cfg(debug_assertions)]
-                            println!("killed the child, lmao")
-                        }
-                        Err(_e) => {
-                            #[cfg(debug_assertions)]
-                            println!("{_e}")
-                        }
-                    };
-                    modal_state.show(false);
-                    output.clear();
-                }
-            }
-        }
-
-        // fn view(&self) -> Element<Message> {
-        //     ..
-        // }
-    }
-}
-
 fn main() -> iced::Result {
+    
     let settings = Settings {
         id: Some("ytdlp-gui".to_string()),
         window: window::Settings {
@@ -804,6 +626,7 @@ fn main() -> iced::Result {
             resizable: false,
             ..Default::default()
         },
+        exit_on_close_request: false,
         ..Default::default()
     };
 
