@@ -49,6 +49,7 @@ impl Command {
         is_playlist: bool,
         download_folder: &mut Option<PathBuf>,
         output: &mut String,
+        progress: &mut f32,
         sender: Option<UnboundedSender<String>>,
     ) {
         let mut args = Vec::new();
@@ -112,14 +113,14 @@ impl Command {
                             AudioFormat::Wav => {
                                 args.push("wav".to_string());
                             }
-                            AudioFormat::Ogg => {
-                                args.push("ogg".to_string());
+                            AudioFormat::Vorbis => {
+                                args.push("vorbis".to_string());
                             }
                             AudioFormat::Opus => {
                                 args.push("opus".to_string());
                             }
-                            AudioFormat::Webm => {
-                                args.push("webm".to_string());
+                            AudioFormat::M4a => {
+                                args.push("m4a".to_string());
                             }
                         }
 
@@ -176,17 +177,36 @@ impl Command {
                 #[cfg(target_os = "windows")]
                 command.creation_flags(CREATE_NO_WINDOW);
 
-                self.shared_child =
-                    match SharedChild::spawn(command.args(args).stdout(Stdio::piped())) {
-                        Ok(child) => Some(Arc::new(child)),
-                        Err(e) => {
-                            println!("{e}");
-                            None
-                        }
-                    };
-
+                self.shared_child = match SharedChild::spawn(
+                    command
+                        .args(args)
+                        .stderr(Stdio::piped())
+                        .stdout(Stdio::piped()),
+                ) {
+                    Ok(child) => Some(Arc::new(child)),
+                    Err(e) => {
+                        println!("{e}");
+                        None
+                    }
+                };
                 if let Some(child) = self.shared_child.clone() {
                     modal_state.show(true);
+                    if let Some(stderr) = child.take_stderr() {
+                        let sender = Arc::new(Mutex::new(sender.clone().unwrap()));
+                        std::thread::spawn(move || {
+                            let reader = BufReader::new(stderr);
+                            for line in reader.lines() {
+                                if let Ok(line) = line {
+                                    (*sender.lock().unwrap())
+                                        .unbounded_send(line)
+                                        .unwrap_or_else(|_e| {
+                                            #[cfg(debug_assertions)]
+                                            println!("{_e}")
+                                        });
+                                }
+                            }
+                        });
+                    }
                     if let Some(stdout) = child.take_stdout() {
                         let sender = Arc::new(Mutex::new(sender.unwrap()));
                         std::thread::spawn(move || {
@@ -240,6 +260,7 @@ impl Command {
                     }
                 };
                 modal_state.show(false);
+                *progress = 0.;
                 output.clear();
             }
         }

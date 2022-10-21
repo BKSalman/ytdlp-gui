@@ -140,8 +140,8 @@ pub enum AudioFormat {
     #[default]
     Mp3,
     Wav,
-    Ogg,
-    Webm,
+    Vorbis,
+    M4a,
     Opus,
 }
 
@@ -149,9 +149,9 @@ impl AudioFormat {
     const ALL: [AudioFormat; 5] = [
         AudioFormat::Mp3,
         AudioFormat::Wav,
-        AudioFormat::Ogg,
+        AudioFormat::Vorbis,
         AudioFormat::Opus,
-        AudioFormat::Webm,
+        AudioFormat::M4a,
     ];
 }
 
@@ -198,6 +198,7 @@ impl Application for YtGUI {
                     self.is_playlist,
                     &mut self.download_folder,
                     &mut self.output,
+                    &mut self.progress,
                     self.sender.clone(),
                 );
             }
@@ -252,10 +253,19 @@ impl Application for YtGUI {
                     if let Ok(percentage) = words[0].trim_end_matches("%").parse::<f32>() {
                         self.progress = percentage;
                     }
-
+                    
+                    if self.progress == 100. {
+                        self.output = String::from("Processing...");
+                        return iced::Command::none();
+                    }
+                    
                     self.output = words[1..].join(" | ");
 
                     return iced::Command::none();
+                } else if progress.contains("[ExtractAudio]") {
+                    self.output = "Extracting Audio".to_string();
+                    return iced::Command::none();
+
                 } else if progress.ends_with("has already been downloaded") {
                     self.output = "has already been downloaded".to_string();
                     return iced::Command::none();
