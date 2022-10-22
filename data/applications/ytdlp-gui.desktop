@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Youtube Downloader
-GenericName=Downloader
+GenericName=Download Youtube videos as video or audio files.
 Comment=Download youtube videos/audio
 Exec=ytdlp-gui
 Icon=ytdlp-gui
