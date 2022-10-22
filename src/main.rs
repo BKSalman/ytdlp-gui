@@ -257,7 +257,7 @@ impl Application for YtGUI {
                 }
 
                 if progress.contains('%') {
-                    self.progress_state = ProgressState::HideText;
+                    self.progress_state = ProgressState::ShowText;
 
                     let words = progress
                         .split(' ')
