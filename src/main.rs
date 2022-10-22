@@ -101,14 +101,14 @@ impl Default for YtGUI {
             command: command::Command::default(),
             progress: 0.,
             should_exit: false,
-            progress_state: ProgressState::HideText,
+            progress_state: ProgressState::Hide,
         }
     }
 }
 
 pub enum ProgressState {
-    ShowText,
-    HideText,
+    Show,
+    Hide,
 }
 
 #[derive(Debug, Default)]
@@ -257,7 +257,7 @@ impl Application for YtGUI {
                 }
 
                 if progress.contains('%') {
-                    self.progress_state = ProgressState::ShowText;
+                    self.progress_state = ProgressState::Show;
 
                     let words = progress
                         .split(' ')
@@ -274,16 +274,16 @@ impl Application for YtGUI {
                     return iced::Command::none();
                 } else if progress.contains("[ExtractAudio]") {
                     self.output = String::from("Extracting audio");
-                    self.progress_state = ProgressState::HideText;
+                    self.progress_state = ProgressState::Hide;
                     return iced::Command::none();
                 } else if progress.contains("has already been downloaded") {
                     self.output = String::from("Already downloaded");
-                    self.progress_state = ProgressState::HideText;
+                    self.progress_state = ProgressState::Hide;
                     return iced::Command::none();
                 } else if progress.contains("Encountered a video that did not match filter") {
                     self.output =
                         String::from("Playlist box needs to be checked to download a playlist");
-                    self.progress_state = ProgressState::HideText;
+                    self.progress_state = ProgressState::Hide;
                     return iced::Command::none();
                 }
                 #[cfg(debug_assertions)]
@@ -392,7 +392,9 @@ impl Application for YtGUI {
             let progress_bar_row = Row::new();
 
             Card::new(
-                Text::new("Downloading").horizontal_alignment(iced::alignment::Horizontal::Center),
+                Text::new("Downloading")
+                    .horizontal_alignment(iced::alignment::Horizontal::Center)
+                    .vertical_alignment(iced::alignment::Vertical::Center),
                 Column::new()
                     .width(Length::Fill)
                     .push(
@@ -402,10 +404,10 @@ impl Application for YtGUI {
                         ),
                     )
                     .push(match self.progress_state {
-                        ProgressState::ShowText => progress_bar_row
+                        ProgressState::Show => progress_bar_row
                             .push(ProgressBar::new(0.0..=100., self.progress))
                             .height(Length::Fill),
-                        ProgressState::HideText => progress_bar_row.height(Length::Shrink),
+                        ProgressState::Hide => progress_bar_row.height(Length::Units(0)),
                     })
                     .align_items(iced::Alignment::Center),
             )

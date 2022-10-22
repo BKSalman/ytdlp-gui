@@ -210,6 +210,7 @@ impl Command {
                             }
                         });
                     }
+                    *output = String::from("Initializing...");
                     if let Some(stdout) = child.take_stdout() {
                         let sender = Arc::new(Mutex::new(sender.unwrap()));
                         std::thread::spawn(move || {
@@ -263,7 +264,7 @@ impl Command {
                     }
                 };
                 modal_state.show(false);
-                *progress_state = ProgressState::HideText;
+                *progress_state = ProgressState::Hide;
                 *progress = 0.;
                 output.clear();
             }
@@ -279,7 +280,7 @@ impl Command {
                     }
                 };
                 *progress = 0.;
-                *progress_state = ProgressState::HideText;
+                *progress_state = ProgressState::Hide;
                 if output.contains("Already") {
                     return;
                 }
