@@ -2,10 +2,8 @@
 a GUI for yt-dlp written in Rust
 
 # Preview
-
-![image](https://user-images.githubusercontent.com/85521119/195943924-f7d1e8da-1b47-422b-9a44-7940b2c849cf.png)
-![image](https://user-images.githubusercontent.com/85521119/195943970-e206ab10-e098-43c6-985f-361b59492f66.png)
-
+![image](https://user-images.githubusercontent.com/85521119/197349230-dac48be5-d855-4d06-aa7e-d3a762b9efeb.png)
+![image](https://user-images.githubusercontent.com/85521119/197349217-9be1988a-e869-4f85-bc1e-0b4b79253c14.png)
 
 # Installation
 ## Linux
