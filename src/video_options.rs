@@ -1,4 +1,4 @@
-use iced::widget::{row, radio, text, Row};
+use iced::widget::{radio, row, text, Row};
 use strum::Display;
 
 use crate::{Message, FONT_SIZE, SPACING};
@@ -49,6 +49,38 @@ pub enum AudioFormat {
     Opus,
 }
 
+impl VideoResolution {
+    pub fn options(&self) -> &str {
+        match self {
+            VideoResolution::FourK => {
+                "res:2160,"
+            }
+            VideoResolution::TwoK => {
+                "res:1440,"
+            }
+            VideoResolution::FullHD => {
+                "res:1080,"
+            }
+            VideoResolution::Hd => {
+                "res:720,"
+            }
+            VideoResolution::Sd => {
+                "res:480,"
+            }
+        }
+    }
+}
+
+impl VideoFormat {
+    pub fn options(&self) -> &str {
+        match self {
+            VideoFormat::Mp4 => "ext:mp4",
+            VideoFormat::ThreeGP => "ext:3gp",
+            VideoFormat::Webm => "ext:webm",
+        }
+    }
+}
+
 impl AudioFormat {
     const ALL: [AudioFormat; 5] = [
         AudioFormat::Mp3,
@@ -57,6 +89,16 @@ impl AudioFormat {
         AudioFormat::Opus,
         AudioFormat::M4a,
     ];
+
+    pub fn options(&self) -> String {
+        match self {
+            AudioFormat::Mp3 => String::from("mp3"),
+            AudioFormat::Wav => String::from("wav"),
+            AudioFormat::Vorbis => String::from("vorbis"),
+            AudioFormat::Opus => String::from("opus"),
+            AudioFormat::M4a => String::from("m4a"),
+        }
+    }
 }
 
 impl AudioQuality {
@@ -66,6 +108,15 @@ impl AudioQuality {
         AudioQuality::Medium,
         AudioQuality::Low,
     ];
+
+    pub fn options(&self) -> String {
+        match self {
+            AudioQuality::Best => String::from("0"),
+            AudioQuality::Good => String::from("2"),
+            AudioQuality::Medium => String::from("4"),
+            AudioQuality::Low => String::from("6"),
+        }
+    }
 }
 
 const RADIO_DOT_SIZE: u16 = 15;

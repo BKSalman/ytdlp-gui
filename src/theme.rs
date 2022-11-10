@@ -1,25 +1,10 @@
-use iced::{
-    application::StyleSheet,
-    theme,
-    Color,
-};
+use iced::{theme, Color, widget::radio, application};
+
+use iced_aw::{modal, style::card, tabs};
 
 #[derive(Default)]
 pub struct Theme;
 
-#[derive(Default)]
-pub struct Style;
-
-impl StyleSheet for Theme {
-    type Style = Style;
-
-    fn appearance(&self, style: &Self::Style) -> iced::application::Appearance {
-        iced::application::Appearance {
-            background_color: SURFACE,
-            text_color: Color::WHITE,
-        }
-    }
-}
 const SURFACE: Color = Color::from_rgb(
     0x40 as f32 / 255.0,
     0x44 as f32 / 255.0,
@@ -205,80 +190,88 @@ pub fn ytdlp_gui_theme() -> theme::Theme {
 //         toggler, Color,
 //     };
 
-    // use iced_aw::{modal, style::card, tabs};
 
-    // #[derive(Default, Copy, Clone)]
-    // pub struct Card;
+#[derive(Default)]
+pub struct App;
 
-    // impl card::StyleSheet for Card {
-    //     type Style = Card;
+impl application::StyleSheet for Theme {
+    type Style = App;
 
-    //     fn active(&self, style: Self::Style) -> iced_aw::card::Appearance {
-    //         iced_aw::card::Appearance {
-    //             background: SURFACE.into(),
-    //             body_text_color: Color::WHITE,
-    //             border_radius: 5.,
-    //             head_background: ACTIVE.into(),
-    //             head_text_color: Color::WHITE,
-    //             border_color: Color::TRANSPARENT,
-    //             close_color: Color::WHITE,
-    //             ..Default::default()
-    //         }
-    //     }
+    fn appearance(&self, style: &Self::Style) -> iced::application::Appearance {
+        iced::application::Appearance {
+            background_color: SURFACE,
+            text_color: Color::WHITE,
+        }
+    }
+}
 
-    // }
+#[derive(Default, Copy, Clone)]
+pub struct Card;
 
-//     pub struct Modal;
+impl card::StyleSheet for Card {
+    type Style = Card;
 
-//     impl modal::StyleSheet for Modal {
-//         fn active(&self) -> modal::Style {
-//             modal::Style {
-//                 background: ACTIVE.into(),
-//             }
-//         }
-//     }
+    fn active(&self, _style: Self::Style) -> iced_aw::card::Appearance {
+        iced_aw::card::Appearance {
+            background: SURFACE.into(),
+            body_text_color: Color::WHITE,
+            border_radius: 5.,
+            head_background: ACTIVE.into(),
+            head_text_color: Color::WHITE,
+            border_color: Color::TRANSPARENT,
+            close_color: Color::WHITE,
+            ..Default::default()
+        }
+    }
+}
 
-//     pub struct Tabs;
+#[derive(Default, Copy, Clone)]
+pub struct Modal;
 
-//     impl tabs::StyleSheet for Tabs {
-//         fn active(&self, is_active: bool) -> tabs::Style {
-//             if is_active {
-//                 tabs::Style {
-//                     background: ACTIVE.into(),
-//                     text_color: Color::WHITE,
-//                     border_color: None,
-//                     border_width: 0.,
-//                     icon_color: Color::default(),
-//                     tab_label_background: ACTIVE.into(),
-//                     tab_label_border_color: Color::TRANSPARENT,
-//                     tab_label_border_width: 1.,
-//                 }
-//             } else {
-//                 tabs::Style {
-//                     background: SURFACE.into(),
-//                     text_color: Color::WHITE,
-//                     border_color: None,
-//                     border_width: 0.,
-//                     icon_color: Color::default(),
-//                     tab_label_background: SURFACE.into(),
-//                     tab_label_border_color: Color::TRANSPARENT,
-//                     tab_label_border_width: 1.,
-//                 }
-//             }
-//         }
-//         fn hovered(&self, _is_active: bool) -> tabs::Style {
-//             tabs::Style {
-//                 background: HOVERED.into(),
-//                 text_color: Color::WHITE,
-//                 border_color: None,
-//                 border_width: 0.,
-//                 icon_color: Color::default(),
-//                 tab_label_background: HOVERED.into(),
-//                 tab_label_border_color: Color::TRANSPARENT,
-//                 tab_label_border_width: 1.,
-//             }
-//         }
-//     }
+impl modal::StyleSheet for Modal {
+    type Style = Modal;
+
+    fn active(&self, _style: Self::Style) -> iced_aw::style::modal::Appearance {
+        iced_aw::style::modal::Appearance {
+            background: ACTIVE.into(),
+        }
+    }
+}
+
+#[derive(Default, Copy, Clone)]
+pub struct Tabs;
+
+impl tabs::StyleSheet for Tabs {
+    type Style = Tabs;
+
+    fn active(&self, style: Self::Style, is_active: bool) -> iced_aw::style::tab_bar::Appearance {
+        if is_active {
+            iced_aw::style::tab_bar::Appearance {
+                background: ACTIVE.into(),
+                tab_label_background: ACTIVE.into(),
+                ..self.hovered(style, is_active)
+            }
+        } else {
+            iced_aw::style::tab_bar::Appearance {
+                background: SURFACE.into(),
+                tab_label_background: SURFACE.into(),
+                ..self.hovered(style, is_active)
+            }
+        }
+    }
+    fn hovered(&self, _style: Self::Style, _is_active: bool) -> iced_aw::style::tab_bar::Appearance {
+        iced_aw::style::tab_bar::Appearance {
+            background: HOVERED.into(),
+            text_color: Color::WHITE,
+            border_color: None,
+            border_width: 0.,
+            icon_color: Color::default(),
+            tab_label_background: HOVERED.into(),
+            tab_label_border_color: Color::TRANSPARENT,
+            tab_label_border_width: 1.,
+        }
+    }
+}
 
 //     pub struct Container;
 
@@ -292,26 +285,30 @@ pub fn ytdlp_gui_theme() -> theme::Theme {
 //         }
 //     }
 
-//     pub struct Radio;
+    // #[derive(Default)]
+    // pub struct Radio;
 
-//     impl radio::StyleSheet for Radio {
-//         fn active(&self) -> radio::Style {
-//             radio::Style {
-//                 background: SURFACE.into(),
-//                 dot_color: ACTIVE,
-//                 border_width: 1.0,
-//                 border_color: ACTIVE,
-//                 text_color: None,
-//             }
-//         }
+    // impl radio::StyleSheet for Radio {
+        
+    //     type Style = Radio;
 
-//         fn hovered(&self) -> radio::Style {
-//             radio::Style {
-//                 background: Color { a: 0.5, ..SURFACE }.into(),
-//                 ..self.active()
-//             }
-//         }
-//     }
+    //     fn active(&self, style: theme::Radio, is_active: bool) -> radio::Appearance {
+    //         radio::Appearance {
+    //             background: SURFACE.into(),
+    //             dot_color: ACTIVE,
+    //             border_width: 1.0,
+    //             border_color: ACTIVE,
+    //             text_color: None,
+    //         }
+    //     }
+
+    //     fn hovered(&self) -> radio::Style {
+    //         radio::Style {
+    //             background: Color { a: 0.5, ..SURFACE }.into(),
+    //             ..self.active()
+    //         }
+    //     }
+    // }
 
 //     pub struct TextInput;
 

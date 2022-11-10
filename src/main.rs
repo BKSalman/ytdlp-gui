@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertion), windows_subsystem = "windows")]
+use command::ProgressState;
 use iced::executor;
 use iced::{
     futures::{
@@ -6,7 +7,7 @@ use iced::{
         StreamExt,
     },
     widget::{
-        button, checkbox, column, container, progress_bar, radio, row, text, text_input, Row,
+        button, checkbox, column, container, progress_bar, row, text, text_input, Row,
     },
     window, Application, Element, Length, Settings, Subscription,
 };
@@ -28,7 +29,7 @@ mod video_options;
 
 use video_options::{Options, VideoFormat, VideoResolution, AudioFormat, AudioQuality};
 
-use theme::Theme;
+use theme::{Theme, ytdlp_gui_theme};
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -56,18 +57,17 @@ pub enum Message {
 }
 
 struct YtGUI {
-    theme: iced::Theme,
-
-    show_modal: bool,
-
     download_link: String,
     is_playlist: bool,
     options: Options,
     download_folder: Option<PathBuf>,
 
+    theme: iced::Theme,
+    show_modal: bool,
     placeholder: String,
     active_tab: usize,
     ui_message: String,
+
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
     progress: f32,
@@ -78,15 +78,17 @@ struct YtGUI {
 impl Default for YtGUI {
     fn default() -> Self {
         Self {
-            theme: theme::ytdlp_gui_theme(),
-            download_folder: Some(PathBuf::from("~/Videos")),
             download_link: String::default(),
             is_playlist: bool::default(),
             options: Options::default(),
+            download_folder: Some(PathBuf::from("~/Videos")),
+
+            theme: theme::ytdlp_gui_theme(),
+            show_modal: false,
             placeholder: "Download link".to_string(),
             active_tab: 0,
-            show_modal: false,
             ui_message: String::default(),
+
             sender: None,
             command: command::Command::default(),
             progress: 0.,
@@ -94,11 +96,6 @@ impl Default for YtGUI {
             progress_state: ProgressState::Hide,
         }
     }
-}
-
-pub enum ProgressState {
-    Show,
-    Hide,
 }
 
 impl Application for YtGUI {
@@ -335,6 +332,10 @@ impl Application for YtGUI {
 
     fn should_exit(&self) -> bool {
         self.should_exit
+    }
+    
+    fn theme(&self) -> iced::Theme {
+        ytdlp_gui_theme()
     }
 }
 

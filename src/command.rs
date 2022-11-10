@@ -7,9 +7,8 @@ use std::{
 };
 
 use iced::futures::channel::mpsc::UnboundedSender;
-use iced_aw::modal;
 
-use crate::{AudioFormat, AudioQuality, VideoFormat, ProgressState, video_options::{Options, VideoResolution}};
+use crate::video_options::Options;
 
 #[cfg(target_os = "windows")]
 use crate::CREATE_NO_WINDOW;
@@ -19,6 +18,11 @@ pub enum Message {
     Run(String),
     Stop,
     Finished,
+}
+
+pub enum ProgressState {
+    Show,
+    Hide,
 }
 
 pub struct Command {
@@ -70,74 +74,25 @@ impl Command {
                         let mut video = String::new();
                         args.push(String::from("-S"));
 
-                        match options.video_resolution {
-                            VideoResolution::FourK => {
-                                video.push_str("res:2160,");
-                            }
-                            VideoResolution::TwoK => {
-                                video.push_str("res:1440,");
-                            }
-                            VideoResolution::FullHD => {
-                                video.push_str("res:1080,");
-                            }
-                            VideoResolution::Hd => {
-                                video.push_str("res:720,");
-                            }
-                            VideoResolution::Sd => {
-                                video.push_str("res:480,");
-                            }
-                        }
+                        video.push_str(options.video_resolution.options());
+                        
+                        video.push_str(options.video_format.options());
 
-                        match options.video_format {
-                            VideoFormat::Mp4 => {
-                                video.push_str("ext:mp4");
-                            }
-                            VideoFormat::ThreeGP => {
-                                video.push_str("ext:3gp");
-                            }
-                            VideoFormat::Webm => {
-                                video.push_str("ext:webm");
-                            }
-                        }
                         args.push(video);
                     }
                     1 => {
                         // Audio tab
+                        
+                        // Extract audio from Youtube video
                         args.push(String::from("-x"));
-                        args.push(String::from("--audio-format"));
-                        match options.audio_format {
-                            AudioFormat::Mp3 => {
-                                args.push(String::from("mp3"));
-                            }
-                            AudioFormat::Wav => {
-                                args.push(String::from("wav"));
-                            }
-                            AudioFormat::Vorbis => {
-                                args.push(String::from("vorbis"));
-                            }
-                            AudioFormat::Opus => {
-                                args.push(String::from("opus"));
-                            }
-                            AudioFormat::M4a => {
-                                args.push(String::from("m4a"));
-                            }
-                        }
 
+                        // set audio format
+                        args.push(String::from("--audio-format"));
+                        args.push(options.audio_format.options());
+                        
+                        // set audio quality
                         args.push(String::from("--audio-quality"));
-                        match options.audio_quality {
-                            AudioQuality::Best => {
-                                args.push(String::from("0"));
-                            }
-                            AudioQuality::Good => {
-                                args.push(String::from("2"));
-                            }
-                            AudioQuality::Medium => {
-                                args.push(String::from("4"));
-                            }
-                            AudioQuality::Low => {
-                                args.push(String::from("6"));
-                            }
-                        }
+                        args.push(options.audio_quality.options());
                     }
                     _ => {}
                 }
