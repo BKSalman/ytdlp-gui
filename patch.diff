@@ -1,0 +1,17 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 3a46c4a..2ca866e 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -13,9 +13,9 @@ authors = ["Salman"]
+ 
+ [dependencies]
+ anyhow = "1.0.65"
+-iced = "0.4.2"
+-iced_aw = { version = "0.2.0", features = ["tabs", "modal", "card"], default-features = false }
+-iced_native = "0.5.1"
++iced = "0.5.1"
++iced_aw = { git = "https://github.com/iced-rs/iced_aw/", rev = "68e6033", features = ["tabs", "modal", "card", "colors"], default-features = false }
++iced_native = "0.6.0"
+ native-dialog = "0.6.3"
+ shared_child = "1.0.0"
+ strum = { version = "0.24.1", features = ["derive"] }

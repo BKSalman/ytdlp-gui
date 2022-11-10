@@ -9,7 +9,7 @@ use std::{
 use iced::futures::channel::mpsc::UnboundedSender;
 use iced_aw::modal;
 
-use crate::{AudioFormat, AudioQuality, ModalState, Resolution, VideoFormat, ProgressState};
+use crate::{AudioFormat, AudioQuality, VideoFormat, ProgressState, video_options::{Options, VideoResolution}};
 
 #[cfg(target_os = "windows")]
 use crate::CREATE_NO_WINDOW;
@@ -40,16 +40,13 @@ impl Command {
     pub fn update(
         &mut self,
         message: Message,
-        modal_state: &mut modal::State<ModalState>,
+        show_modal: &mut bool,
         placeholder: &mut String,
         active_tab: usize,
-        resolution: Resolution,
-        video_format: VideoFormat,
-        audio_format: AudioFormat,
-        audio_quality: AudioQuality,
+        options: Options,
         is_playlist: bool,
         download_folder: &mut Option<PathBuf>,
-        output: &mut String,
+        ui_message: &mut String,
         progress: &mut f32,
         progress_state: &mut ProgressState,
         sender: Option<UnboundedSender<String>>,
@@ -60,38 +57,38 @@ impl Command {
         match message {
             Message::Run(link) => {
                 if link.is_empty() {
-                    *placeholder = "No Download link was provided!".to_string();
+                    *placeholder = String::from("No Download link was provided!");
                     return;
                 }
 
-                *placeholder = "Download link".to_string();
+                *placeholder = String::from("Download link");
 
                 args.push(link);
 
                 match active_tab {
                     0 => {
                         let mut video = String::new();
-                        args.push("-S".to_string());
+                        args.push(String::from("-S"));
 
-                        match resolution {
-                            Resolution::FourK => {
+                        match options.video_resolution {
+                            VideoResolution::FourK => {
                                 video.push_str("res:2160,");
                             }
-                            Resolution::TwoK => {
+                            VideoResolution::TwoK => {
                                 video.push_str("res:1440,");
                             }
-                            Resolution::FullHD => {
+                            VideoResolution::FullHD => {
                                 video.push_str("res:1080,");
                             }
-                            Resolution::Hd => {
+                            VideoResolution::Hd => {
                                 video.push_str("res:720,");
                             }
-                            Resolution::Sd => {
+                            VideoResolution::Sd => {
                                 video.push_str("res:480,");
                             }
                         }
 
-                        match video_format {
+                        match options.video_format {
                             VideoFormat::Mp4 => {
                                 video.push_str("ext:mp4");
                             }
@@ -106,39 +103,39 @@ impl Command {
                     }
                     1 => {
                         // Audio tab
-                        args.push("-x".to_string());
-                        args.push("--audio-format".to_string());
-                        match audio_format {
+                        args.push(String::from("-x"));
+                        args.push(String::from("--audio-format"));
+                        match options.audio_format {
                             AudioFormat::Mp3 => {
-                                args.push("mp3".to_string());
+                                args.push(String::from("mp3"));
                             }
                             AudioFormat::Wav => {
-                                args.push("wav".to_string());
+                                args.push(String::from("wav"));
                             }
                             AudioFormat::Vorbis => {
-                                args.push("vorbis".to_string());
+                                args.push(String::from("vorbis"));
                             }
                             AudioFormat::Opus => {
-                                args.push("opus".to_string());
+                                args.push(String::from("opus"));
                             }
                             AudioFormat::M4a => {
-                                args.push("m4a".to_string());
+                                args.push(String::from("m4a"));
                             }
                         }
 
-                        args.push("--audio-quality".to_string());
-                        match audio_quality {
+                        args.push(String::from("--audio-quality"));
+                        match options.audio_quality {
                             AudioQuality::Best => {
-                                args.push("0".to_string());
+                                args.push(String::from("0"));
                             }
                             AudioQuality::Good => {
-                                args.push("2".to_string());
+                                args.push(String::from("2"));
                             }
                             AudioQuality::Medium => {
-                                args.push("4".to_string());
+                                args.push(String::from("4"));
                             }
                             AudioQuality::Low => {
-                                args.push("6".to_string());
+                                args.push(String::from("6"));
                             }
                         }
                     }
@@ -146,17 +143,17 @@ impl Command {
                 }
 
                 if is_playlist {
-                    args.push("--yes-playlist".to_string());
-                    args.push("-P".to_string());
+                    args.push(String::from("--yes-playlist"));
+                    args.push(String::from("-P"));
                     args.push(
                         download_folder
                             .clone()
-                            .unwrap()
+                            .expect("No Videos Directory")
                             .to_str()
                             .expect("No Videos Directory")
                             .to_string(),
                     );
-                    args.push("-o %(playlist)s/%(title)s.%(ext)s".to_string())
+                    args.push(String::from("-o %(playlist)s/%(title)s.%(ext)s"))
                 } else {
                     args.push(String::from("--break-on-reject"));
                     args.push(String::from("--match-filter"));
@@ -166,13 +163,13 @@ impl Command {
                     args.push(
                         download_folder
                             .clone()
-                            .unwrap()
+                            .expect("No Videos Directory")
                             .to_str()
                             .expect("No Videos Directory")
                             .to_string(),
                     );
-                    args.push("-o".to_string());
-                    args.push("%(title)s.%(ext)s".to_string())
+                    args.push(String::from("-o"));
+                    args.push(String::from("%(title)s.%(ext)s"))
                 }
 
                 let mut command = std::process::Command::new("yt-dlp");
@@ -195,13 +192,16 @@ impl Command {
                     }
                 };
                 if let Some(child) = self.shared_child.clone() {
-                    modal_state.show(true);
+
+                    *show_modal = true;
+
                     if let Some(stderr) = child.take_stderr() {
-                        let sender = Arc::new(Mutex::new(sender.clone().unwrap()));
+
+                        let sender = Arc::new(Mutex::new(sender.clone().expect("Sender clone")));
                         std::thread::spawn(move || {
                             let reader = BufReader::new(stderr);
                             for line in reader.lines().flatten() {
-                                    (*sender.lock().unwrap())
+                                    (*sender.lock().expect("Sender lock"))
                                         .unbounded_send(line)
                                         .unwrap_or_else(|_e| {
                                             #[cfg(debug_assertions)]
@@ -210,9 +210,9 @@ impl Command {
                             }
                         });
                     }
-                    *output = String::from("Initializing...");
+                    *ui_message = String::from("Initializing...");
                     if let Some(stdout) = child.take_stdout() {
-                        let sender = Arc::new(Mutex::new(sender.unwrap()));
+                        let sender = Arc::new(Mutex::new(sender.expect("Sender")));
                         std::thread::spawn(move || {
                             let mut reader = BufReader::new(stdout);
                             let mut buffer: Vec<u8> = Vec::new();
@@ -223,7 +223,7 @@ impl Command {
                                     }
                                     match std::str::from_utf8(&buffer) {
                                         Ok(str) => {
-                                            (*sender.lock().unwrap())
+                                            (*sender.lock().expect("Sender lock"))
                                                 .unbounded_send(str.to_string())
                                                 .unwrap_or_else(|_e| {
                                                     #[cfg(debug_assertions)]
@@ -239,8 +239,8 @@ impl Command {
                                     panic!("failed to read buffer")
                                 }
                             }
-                            (*sender.lock().unwrap())
-                                .unbounded_send("Finished".to_string())
+                            (*sender.lock().expect("Sender lock"))
+                                .unbounded_send(String::from("Finished"))
                                 .unwrap_or_else(|_e| {
                                     #[cfg(debug_assertions)]
                                     println!("{_e}")
@@ -248,12 +248,12 @@ impl Command {
                         });
                     }
                 } else {
-                    modal_state.show(true);
-                    *output = String::from("yt-dlp binary is missing, add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`");
+                    *show_modal = true;
+                    *ui_message = String::from("yt-dlp binary is missing, add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`");
                 }
             }
             Message::Stop => {
-                match self.shared_child.clone().unwrap().kill() {
+                match self.shared_child.clone().expect("Shared child").kill() {
                     Ok(_) => {
                         #[cfg(debug_assertions)]
                         println!("killed the child, lmao")
@@ -263,13 +263,13 @@ impl Command {
                         println!("{_e}")
                     }
                 };
-                modal_state.show(false);
+                *show_modal = false;
                 *progress_state = ProgressState::Hide;
                 *progress = 0.;
-                output.clear();
+                ui_message.clear();
             }
             Message::Finished => {
-                match self.shared_child.clone().unwrap().kill() {
+                match self.shared_child.clone().expect("Shared child").kill() {
                     Ok(_) => {
                         #[cfg(debug_assertions)]
                         println!("killed the child, lmao")
@@ -281,10 +281,10 @@ impl Command {
                 };
                 *progress = 0.;
                 *progress_state = ProgressState::Hide;
-                if output.contains("Already") {
+                if ui_message.contains("Already") {
                     return;
                 }
-                *output = String::from("Finished!");
+                *ui_message = String::from("Finished!");
             }
         }
     }

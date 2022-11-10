@@ -1,13 +1,14 @@
 #![cfg_attr(not(debug_assertion), windows_subsystem = "windows")]
+use iced::executor;
 use iced::{
-    button, executor,
     futures::{
         channel::mpsc::{self, UnboundedSender},
         StreamExt,
     },
-    text_input::State,
-    window, Application, Button, Checkbox, Column, Container, Element, Length, ProgressBar, Radio,
-    Row, Settings, Subscription, Text, TextInput,
+    widget::{
+        button, checkbox, column, container, progress_bar, radio, row, text, text_input, Row,
+    },
+    window, Application, Element, Length, Settings, Subscription,
 };
 
 #[allow(unused_imports)]
@@ -17,14 +18,15 @@ use iced_native::subscription;
 use std::path::PathBuf;
 use std::process::Child;
 
-use iced_aw::{modal, Card, Modal, Tabs};
+use iced_aw::{Card, Modal, Tabs};
 
 use native_dialog::FileDialog;
 
-use strum::Display;
-
 mod command;
 mod theme;
+mod video_options;
+
+use video_options::{Options, VideoFormat, VideoResolution, AudioFormat, AudioQuality};
 
 use theme::Theme;
 
@@ -35,14 +37,13 @@ const FONT_SIZE: u16 = 18;
 
 const SPACING: u16 = 10;
 
-const RADIO_DOT_SIZE: u16 = 15;
 
 #[derive(Debug, Clone)]
 pub enum Message {
     InputChanged(String),
     TogglePlaylist(bool),
     SelectedVideoFormat(VideoFormat),
-    SelectedResolution(Resolution),
+    SelectedResolution(VideoResolution),
     SelectedAudioFormat(AudioFormat),
     SelectedAudioQuality(AudioQuality),
     SelectFolder,
@@ -55,22 +56,18 @@ pub enum Message {
 }
 
 struct YtGUI {
-    theme: theme::Theme,
-    link_state: State,
-    download_folder_state: State,
-    download_button_state: button::State,
-    dialog_button_state: button::State,
+    theme: iced::Theme,
+
+    show_modal: bool,
+
     download_link: String,
     is_playlist: bool,
-    video_format: VideoFormat,
-    resolution: Resolution,
-    audio_format: AudioFormat,
-    audio_quality: AudioQuality,
+    options: Options,
     download_folder: Option<PathBuf>,
+
     placeholder: String,
     active_tab: usize,
-    modal_state: modal::State<ModalState>,
-    output: String,
+    ui_message: String,
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
     progress: f32,
@@ -81,22 +78,15 @@ struct YtGUI {
 impl Default for YtGUI {
     fn default() -> Self {
         Self {
-            theme: Theme::default(),
+            theme: theme::ytdlp_gui_theme(),
             download_folder: Some(PathBuf::from("~/Videos")),
-            link_state: State::default(),
-            download_folder_state: State::default(),
-            download_button_state: button::State::default(),
-            dialog_button_state: button::State::default(),
             download_link: String::default(),
             is_playlist: bool::default(),
-            video_format: VideoFormat::default(),
-            resolution: Resolution::default(),
-            audio_format: AudioFormat::default(),
-            audio_quality: AudioQuality::default(),
+            options: Options::default(),
             placeholder: "Download link".to_string(),
             active_tab: 0,
-            modal_state: modal::State::default(),
-            output: String::default(),
+            show_modal: false,
+            ui_message: String::default(),
             sender: None,
             command: command::Command::default(),
             progress: 0.,
@@ -111,70 +101,11 @@ pub enum ProgressState {
     Hide,
 }
 
-#[derive(Debug, Default)]
-pub struct ModalState;
-
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Resolution {
-    FourK,
-    TwoK,
-    #[default]
-    FullHD,
-    Hd,
-    Sd,
-}
-
-#[derive(Display, Default, Debug, Copy, Clone, PartialEq, Eq)]
-pub enum VideoFormat {
-    #[default]
-    Mp4,
-    Webm,
-    ThreeGP,
-    // Flv,
-}
-
-#[derive(Display, Default, Debug, Copy, Clone, PartialEq, Eq)]
-pub enum AudioQuality {
-    Best,
-    #[default]
-    Good,
-    Medium,
-    Low,
-}
-
-#[derive(Display, Default, Debug, Copy, Clone, PartialEq, Eq)]
-pub enum AudioFormat {
-    #[default]
-    Mp3,
-    Wav,
-    Vorbis,
-    M4a,
-    Opus,
-}
-
-impl AudioFormat {
-    const ALL: [AudioFormat; 5] = [
-        AudioFormat::Mp3,
-        AudioFormat::Wav,
-        AudioFormat::Vorbis,
-        AudioFormat::Opus,
-        AudioFormat::M4a,
-    ];
-}
-
-impl AudioQuality {
-    const ALL: [AudioQuality; 4] = [
-        AudioQuality::Best,
-        AudioQuality::Good,
-        AudioQuality::Medium,
-        AudioQuality::Low,
-    ];
-}
-
 impl Application for YtGUI {
     type Message = Message;
     type Executor = executor::Default;
     type Flags = ();
+    type Theme = iced::Theme;
 
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Message>) {
         (Self::default(), iced::Command::none())
@@ -185,26 +116,17 @@ impl Application for YtGUI {
     }
 
     fn update(&mut self, event: Message) -> iced::Command<Message> {
-        if !self.download_folder.clone().unwrap().is_dir()
-            && !self.download_folder_state.is_focused()
-        {
-            self.download_folder = Some(PathBuf::from("~/Videos"));
-        }
-
         match event {
             Message::Command(message) => {
                 self.command.update(
                     message,
-                    &mut self.modal_state,
+                    &mut self.show_modal,
                     &mut self.placeholder,
                     self.active_tab,
-                    self.resolution,
-                    self.video_format,
-                    self.audio_format,
-                    self.audio_quality,
+                    self.options,
                     self.is_playlist,
                     &mut self.download_folder,
-                    &mut self.output,
+                    &mut self.ui_message,
                     &mut self.progress,
                     &mut self.progress_state,
                     self.sender.clone(),
@@ -214,13 +136,13 @@ impl Application for YtGUI {
                 self.download_link = input;
             }
             Message::SelectedResolution(resolution) => {
-                self.resolution = resolution;
+                self.options.video_resolution = resolution;
             }
             Message::TogglePlaylist(is_playlist) => {
                 self.is_playlist = is_playlist;
             }
             Message::SelectedVideoFormat(format) => {
-                self.video_format = format;
+                self.options.video_format = format;
             }
             Message::SelectFolder => {
                 if let Ok(Some(path)) = FileDialog::new()
@@ -245,14 +167,14 @@ impl Application for YtGUI {
                 self.active_tab = tab_number;
             }
             Message::SelectedAudioFormat(format) => {
-                self.audio_format = format;
+                self.options.audio_format = format;
             }
             Message::SelectedAudioQuality(quality) => {
-                self.audio_quality = quality;
+                self.options.audio_quality = quality;
             }
             Message::EventRecieved(progress) => {
                 if self.progress == 100. {
-                    self.output = String::from("Processing...");
+                    self.ui_message = String::from("Processing...");
                     return iced::Command::none();
                 }
 
@@ -269,19 +191,19 @@ impl Application for YtGUI {
                         self.progress = percentage;
                     }
 
-                    self.output = words[1..].join(" | ");
+                    self.ui_message = words[1..].join(" | ");
 
                     return iced::Command::none();
                 } else if progress.contains("[ExtractAudio]") {
-                    self.output = String::from("Extracting audio");
+                    self.ui_message = String::from("Extracting audio");
                     self.progress_state = ProgressState::Hide;
                     return iced::Command::none();
                 } else if progress.contains("has already been downloaded") {
-                    self.output = String::from("Already downloaded");
+                    self.ui_message = String::from("Already downloaded");
                     self.progress_state = ProgressState::Hide;
                     return iced::Command::none();
                 } else if progress.contains("Encountered a video that did not match filter") {
-                    self.output =
+                    self.ui_message =
                         String::from("Playlist box needs to be checked to download a playlist");
                     self.progress_state = ProgressState::Hide;
                     return iced::Command::none();
@@ -310,122 +232,99 @@ impl Application for YtGUI {
         iced::Command::none()
     }
 
-    fn view(&mut self) -> Element<Message> {
-        let content: Element<_> = Column::new()
-            .push(
-                Row::new()
-                    .push(Text::new("Enter URL: "))
-                    .push(
-                        TextInput::new(
-                            &mut self.link_state,
-                            // TODO: make modal appear and notify the use they didn't enter a link
-                            &self.placeholder,
-                            &self.download_link,
-                            Message::InputChanged,
-                        )
-                        .style(self.theme)
-                        .size(FONT_SIZE)
-                        .width(Length::Fill),
-                    )
-                    .push(
-                        Checkbox::new(self.is_playlist, "Playlist", Message::TogglePlaylist)
-                            .style(self.theme),
-                    )
-                    .spacing(7)
-                    .align_items(iced::Alignment::Center),
-            )
-            .push(
-                Tabs::new(self.active_tab, Message::SelectTab)
-                    .push(
-                        iced_aw::TabLabel::Text("Video".to_string()),
-                        Column::new()
-                            .push(
-                                YtGUI::video_resolutions(self.resolution, self.theme)
-                                    .width(Length::Fill),
-                            )
-                            .push(YtGUI::video_formats(self.video_format, self.theme)),
-                    )
-                    .push(
-                        iced_aw::TabLabel::Text("Audio".to_string()),
-                        Column::new()
-                            .push(YtGUI::audio_qualities(self.audio_quality, self.theme))
-                            .push(YtGUI::audio_formats(self.audio_format, self.theme)),
-                    )
-                    .height(Length::Shrink)
-                    .width(Length::Units(1))
-                    .tab_bar_width(Length::Units(1))
-                    .tab_bar_style(self.theme),
-            )
-            .push(
-                Row::new()
-                    .push(
-                        Button::new(&mut self.dialog_button_state, Text::new("Browse"))
-                            .on_press(Message::SelectFolder)
-                            .style(self.theme),
-                    )
-                    .push(
-                        TextInput::new(
-                            &mut self.download_folder_state,
-                            "",
-                            self.download_folder.clone().unwrap().to_str().unwrap(),
-                            Message::SelectFolderTextInput,
-                        )
-                        .style(self.theme),
-                    )
-                    .push(
-                        Button::new(&mut self.download_button_state, Text::new("Download"))
-                            .on_press(Message::Command(command::Message::Run(
-                                self.download_link.clone(),
-                            )))
-                            .style(self.theme),
-                    )
-                    .spacing(SPACING)
-                    .align_items(iced::Alignment::Center),
-            )
-            .width(Length::Fill)
-            .align_items(iced::Alignment::Fill)
-            .spacing(20)
-            .padding(20)
-            .into();
+    fn view(&self) -> Element<Message> {
+        let content = column![
+            row![
+                text("Enter URL: "),
+                text_input(
+                    // TODO: make modal appear and notify the use they didn't enter a link
+                    &self.placeholder,
+                    &self.download_link,
+                    Message::InputChanged,
+                )
+                // .style(self.theme)
+                .size(FONT_SIZE)
+                .width(Length::Fill),
+                checkbox("Playlist", self.is_playlist, Message::TogglePlaylist) // .style(self.theme),
+            ]
+            .spacing(7)
+            .align_items(iced::Alignment::Center),
+            Tabs::new(self.active_tab, Message::SelectTab)
+                .push(
+                    iced_aw::TabLabel::Text("Video".to_string()),
+                    column![
+                        Options::video_resolutions(self.options.video_resolution).width(Length::Fill),
+                        Options::video_formats(self.options.video_format)
+                    ]
+                )
+                .push(
+                    iced_aw::TabLabel::Text("Audio".to_string()),
+                    column![
+                        Options::audio_qualities(self.options.audio_quality),
+                        Options::audio_formats(self.options.audio_format)
+                    ]
+                )
+                .height(Length::Shrink)
+                .width(Length::Units(1))
+                .tab_bar_width(Length::Units(1)),
+            // .tab_bar_style(self.theme),
+            row![
+                button("Browse").on_press(Message::SelectFolder),
+                // .style(self.theme),
+                text_input(
+                    "",
+                    self.download_folder.clone().unwrap().to_str().unwrap(),
+                    Message::SelectFolderTextInput,
+                ),
+                // .style(self.theme),
+                button(text("Download")).on_press(Message::Command(command::Message::Run(
+                    self.download_link.clone(),
+                ))),
+                // .style(self.theme),
+            ]
+            .spacing(SPACING)
+            .align_items(iced::Alignment::Center),
+        ]
+        .width(Length::Fill)
+        .align_items(iced::Alignment::Fill)
+        .spacing(20)
+        .padding(20);
 
-        let content: Element<_> = Modal::new(&mut self.modal_state, content, |_state| {
+        let content = Modal::new(self.show_modal, content, || {
             let progress_bar_row = Row::new();
 
             Card::new(
-                Text::new("Downloading")
+                text("Downloading")
                     .horizontal_alignment(iced::alignment::Horizontal::Center)
                     .vertical_alignment(iced::alignment::Vertical::Center),
-                Column::new()
-                    .width(Length::Fill)
-                    .push(
-                        Row::new().height(Length::Fill).push(
-                            Text::new(self.output.clone())
-                                .horizontal_alignment(iced::alignment::Horizontal::Center),
-                        ),
-                    )
-                    .push(match self.progress_state {
+                column![
+                    row![text(self.ui_message.clone())
+                        .horizontal_alignment(iced::alignment::Horizontal::Center),]
+                    .height(Length::Fill),
+                    match self.progress_state {
                         ProgressState::Show => progress_bar_row
-                            .push(ProgressBar::new(0.0..=100., self.progress))
+                            .push(progress_bar(0.0..=100., self.progress))
                             .height(Length::Fill),
                         ProgressState::Hide => progress_bar_row.height(Length::Units(0)),
-                    })
-                    .align_items(iced::Alignment::Center),
+                    }
+                ]
+                .align_items(iced::Alignment::Center),
             )
-            .style(self.theme)
+            // .style(self.theme)
+            .width(Length::Fill)
             .max_height(70)
             .max_width(300)
             .on_close(Message::Command(command::Message::Stop))
             .into()
-        })
-        .into();
+        });
 
         // let content = content.explain(Color::BLACK);
 
-        Container::new(content)
+        container(content)
             .height(Length::Fill)
             .width(Length::Fill)
             .center_y()
-            .style(self.theme)
+            // .style(self.theme)
             .into()
     }
 
@@ -439,164 +338,6 @@ impl Application for YtGUI {
     }
 }
 
-impl YtGUI {
-    fn video_resolutions(resolution: Resolution, theme: Theme) -> Row<'static, Message> {
-        Row::new()
-            .push(Text::new("Resolution: ").size(FONT_SIZE))
-            .push(
-                Radio::new(
-                    Resolution::FourK,
-                    "4K",
-                    Some(resolution),
-                    Message::SelectedResolution,
-                )
-                .size(RADIO_DOT_SIZE)
-                .text_size(FONT_SIZE)
-                .style(theme),
-            )
-            .push(
-                Radio::new(
-                    Resolution::TwoK,
-                    "1440p",
-                    Some(resolution),
-                    Message::SelectedResolution,
-                )
-                .size(RADIO_DOT_SIZE)
-                .text_size(FONT_SIZE)
-                .style(theme),
-            )
-            .push(
-                Radio::new(
-                    Resolution::FullHD,
-                    "1080p",
-                    Some(resolution),
-                    Message::SelectedResolution,
-                )
-                .size(RADIO_DOT_SIZE)
-                .text_size(FONT_SIZE)
-                .style(theme),
-            )
-            .push(
-                Radio::new(
-                    Resolution::Hd,
-                    "720p",
-                    Some(resolution),
-                    Message::SelectedResolution,
-                )
-                .size(RADIO_DOT_SIZE)
-                .text_size(FONT_SIZE)
-                .style(theme),
-            )
-            .push(
-                Radio::new(
-                    Resolution::Sd,
-                    "480p",
-                    Some(resolution),
-                    Message::SelectedResolution,
-                )
-                .size(RADIO_DOT_SIZE)
-                .text_size(FONT_SIZE)
-                .style(theme),
-            )
-            .spacing(SPACING)
-            .align_items(iced::Alignment::Center)
-            .padding(12)
-    }
-
-    fn video_formats(format: VideoFormat, theme: Theme) -> Row<'static, Message> {
-        Row::new()
-            .push(Text::new("Preferred Format: ").size(FONT_SIZE))
-            .push(
-                Radio::new(
-                    VideoFormat::Mp4,
-                    "MP4",
-                    Some(format),
-                    Message::SelectedVideoFormat,
-                )
-                .size(RADIO_DOT_SIZE)
-                .text_size(FONT_SIZE)
-                .style(theme),
-            )
-            .push(
-                Radio::new(
-                    VideoFormat::Webm,
-                    "WEBM",
-                    Some(format),
-                    Message::SelectedVideoFormat,
-                )
-                .size(RADIO_DOT_SIZE)
-                .text_size(FONT_SIZE)
-                .style(theme),
-            )
-            .push(
-                Radio::new(
-                    VideoFormat::ThreeGP,
-                    "3GP",
-                    Some(format),
-                    Message::SelectedVideoFormat,
-                )
-                .size(RADIO_DOT_SIZE)
-                .text_size(FONT_SIZE)
-                .style(theme),
-            )
-            .spacing(SPACING)
-            .align_items(iced::Alignment::Center)
-            .padding(12)
-    }
-    fn audio_formats(format: AudioFormat, theme: Theme) -> Row<'static, Message> {
-        Row::new()
-            .push(Text::new("Preferred Format: ").size(FONT_SIZE))
-            .push(
-                AudioFormat::ALL
-                    .iter()
-                    .cloned()
-                    .fold(Row::new(), |row, audio_format| {
-                        row.push(
-                            Radio::new(
-                                audio_format,
-                                audio_format.to_string().to_ascii_uppercase(),
-                                Some(format),
-                                Message::SelectedAudioFormat,
-                            )
-                            .size(RADIO_DOT_SIZE)
-                            .text_size(FONT_SIZE)
-                            .style(theme),
-                        )
-                        .spacing(SPACING)
-                    }),
-            )
-            .spacing(SPACING)
-            .align_items(iced::Alignment::Center)
-            .padding(12)
-    }
-
-    fn audio_qualities(quality: AudioQuality, theme: Theme) -> Row<'static, Message> {
-        Row::new()
-            .push(Text::new("Quality: ").size(FONT_SIZE))
-            .push(
-                AudioQuality::ALL
-                    .iter()
-                    .cloned()
-                    .fold(Row::new(), |row, audio_quality| {
-                        row.push(
-                            Radio::new(
-                                audio_quality,
-                                audio_quality.to_string(),
-                                Some(quality),
-                                Message::SelectedAudioQuality,
-                            )
-                            .size(RADIO_DOT_SIZE)
-                            .text_size(FONT_SIZE)
-                            .style(theme),
-                        )
-                        .spacing(SPACING)
-                    }),
-            )
-            .spacing(SPACING)
-            .align_items(iced::Alignment::Center)
-            .padding(12)
-    }
-}
 
 enum MyState {
     Starting,
