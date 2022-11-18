@@ -3,3 +3,6 @@ packages
 packages/*
 windows
 windows/*
+aur/*.tar.gz
+aur/src/
+aur/pkg

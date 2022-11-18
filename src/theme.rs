@@ -1,8 +1,11 @@
-use iced::{theme, Color, widget::radio, application};
-
+use iced::widget::{
+    button, checkbox, container, progress_bar, radio, rule, scrollable, slider, text, text_input,
+    toggler,
+};
+use iced::{application, theme, Color};
 use iced_aw::{modal, style::card, tabs};
 
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Theme;
 
 const SURFACE: Color = Color::from_rgb(
@@ -45,12 +48,14 @@ pub fn ytdlp_gui_theme() -> theme::Theme {
     })
 }
 
-// use iced::{
-//     button, checkbox, container, progress_bar, radio, rule, scrollable, slider, text_input, toggler,
-// };
+pub mod widget {
+    use crate::theme::Theme;
 
-// use iced_aw::{modal, style::card, tabs};
-
+    pub type Renderer = iced::Renderer<Theme>;
+    pub type Element<'a, Message> = iced::Element<'a, Message, Renderer>;
+    pub type Container<'a, Message> = iced::widget::Container<'a, Message, Renderer>;
+    pub type Button<'a, Message> = iced::widget::Button<'a, Message, Renderer>;
+}
 // #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 // pub enum Theme {
 //     Light,
@@ -190,14 +195,10 @@ pub fn ytdlp_gui_theme() -> theme::Theme {
 //         toggler, Color,
 //     };
 
-
-#[derive(Default)]
-pub struct App;
-
 impl application::StyleSheet for Theme {
-    type Style = App;
+    type Style = ();
 
-    fn appearance(&self, style: &Self::Style) -> iced::application::Appearance {
+    fn appearance(&self, _style: &Self::Style) -> iced::application::Appearance {
         iced::application::Appearance {
             background_color: SURFACE,
             text_color: Color::WHITE,
@@ -205,11 +206,8 @@ impl application::StyleSheet for Theme {
     }
 }
 
-#[derive(Default, Copy, Clone)]
-pub struct Card;
-
-impl card::StyleSheet for Card {
-    type Style = Card;
+impl card::StyleSheet for Theme {
+    type Style = ();
 
     fn active(&self, _style: Self::Style) -> iced_aw::card::Appearance {
         iced_aw::card::Appearance {
@@ -225,11 +223,8 @@ impl card::StyleSheet for Card {
     }
 }
 
-#[derive(Default, Copy, Clone)]
-pub struct Modal;
-
-impl modal::StyleSheet for Modal {
-    type Style = Modal;
+impl modal::StyleSheet for Theme {
+    type Style = ();
 
     fn active(&self, _style: Self::Style) -> iced_aw::style::modal::Appearance {
         iced_aw::style::modal::Appearance {
@@ -238,11 +233,8 @@ impl modal::StyleSheet for Modal {
     }
 }
 
-#[derive(Default, Copy, Clone)]
-pub struct Tabs;
-
-impl tabs::StyleSheet for Tabs {
-    type Style = Tabs;
+impl tabs::StyleSheet for Theme {
+    type Style = ();
 
     fn active(&self, style: Self::Style, is_active: bool) -> iced_aw::style::tab_bar::Appearance {
         if is_active {
@@ -259,7 +251,11 @@ impl tabs::StyleSheet for Tabs {
             }
         }
     }
-    fn hovered(&self, _style: Self::Style, _is_active: bool) -> iced_aw::style::tab_bar::Appearance {
+    fn hovered(
+        &self,
+        _style: Self::Style,
+        _is_active: bool,
+    ) -> iced_aw::style::tab_bar::Appearance {
         iced_aw::style::tab_bar::Appearance {
             background: HOVERED.into(),
             text_color: Color::WHITE,
@@ -273,44 +269,48 @@ impl tabs::StyleSheet for Tabs {
     }
 }
 
-//     pub struct Container;
+impl container::StyleSheet for Theme {
+    type Style = ();
 
-//     impl container::StyleSheet for Container {
-//         fn style(&self) -> container::Style {
-//             container::Style {
-//                 background: Color::from_rgb8(0x36, 0x39, 0x3F).into(),
-//                 text_color: Color::WHITE.into(),
-//                 ..container::Style::default()
-//             }
+    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
+        container::Appearance {
+            background: Color::from_rgb8(0x36, 0x39, 0x3F).into(),
+            text_color: Color::WHITE.into(),
+            ..Default::default()
+        }
+    }
+}
+
+impl text::StyleSheet for Theme {
+    type Style = ();
+
+    fn appearance(&self, _style: Self::Style) -> text::Appearance {
+        text::Appearance {
+            color: Some(Color::WHITE),
+        }
+    }
+}
+
+// impl radio::StyleSheet for Theme {
+//     type Style = ();
+
+//     fn active(&self, _style: &Self::Style, is_active: bool) -> radio::Appearance {
+//         radio::Appearance {
+//             background: SURFACE.into(),
+//             dot_color: ACTIVE,
+//             border_width: 1.0,
+//             border_color: ACTIVE,
+//             text_color: None,
 //         }
 //     }
 
-    // #[derive(Default)]
-    // pub struct Radio;
-
-    // impl radio::StyleSheet for Radio {
-        
-    //     type Style = Radio;
-
-    //     fn active(&self, style: theme::Radio, is_active: bool) -> radio::Appearance {
-    //         radio::Appearance {
-    //             background: SURFACE.into(),
-    //             dot_color: ACTIVE,
-    //             border_width: 1.0,
-    //             border_color: ACTIVE,
-    //             text_color: None,
-    //         }
-    //     }
-
-    //     fn hovered(&self) -> radio::Style {
-    //         radio::Style {
-    //             background: Color { a: 0.5, ..SURFACE }.into(),
-    //             ..self.active()
-    //         }
-    //     }
-    // }
-
-//     pub struct TextInput;
+//     fn hovered(&self, style: &Self::Style, is_active: bool) -> radio::Appearance {
+//         radio::Appearance {
+//             background: Color { a: 0.5, ..SURFACE }.into(),
+//             ..self.active(&style, is_active)
+//         }
+//     }
+// }
 
 //     impl text_input::StyleSheet for TextInput {
 //         fn active(&self) -> text_input::Style {
@@ -353,32 +353,34 @@ impl tabs::StyleSheet for Tabs {
 
 //     pub struct Button;
 
-//     impl button::StyleSheet for Button {
-//         fn active(&self) -> button::Style {
-//             button::Style {
-//                 background: ACTIVE.into(),
-//                 border_radius: 3.0,
-//                 text_color: Color::WHITE,
-//                 ..button::Style::default()
-//             }
-//         }
+impl button::StyleSheet for Theme {
+    type Style = ();
 
-//         fn hovered(&self) -> button::Style {
-//             button::Style {
-//                 background: HOVERED.into(),
-//                 text_color: Color::WHITE,
-//                 ..self.active()
-//             }
-//         }
+    fn active(&self, style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            background: ACTIVE.into(),
+            border_radius: 3.0,
+            text_color: Color::WHITE,
+            ..Default::default()
+        }
+    }
 
-//         fn pressed(&self) -> button::Style {
-//             button::Style {
-//                 border_width: 1.0,
-//                 border_color: Color::WHITE,
-//                 ..self.hovered()
-//             }
-//         }
-//     }
+    fn hovered(&self, style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            background: HOVERED.into(),
+            text_color: Color::WHITE,
+            ..self.active(&style)
+        }
+    }
+
+    fn pressed(&self, style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            border_width: 1.0,
+            border_color: Color::WHITE,
+            ..self.hovered(&style)
+        }
+    }
+}
 
 //     pub struct Scrollable;
 

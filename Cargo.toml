@@ -14,7 +14,7 @@ authors = ["Salman"]
 [dependencies]
 anyhow = "1.0.65"
 iced = "0.5.1"
-iced_aw = { git = "https://github.com/iced-rs/iced_aw/", rev = "refs/pull/64/head", features = ["tabs", "modal", "card", "colors"], default-features = false }
+iced_aw = { git = "https://github.com/iced-rs/iced_aw/", rev = "81b4dd1", features = ["tabs", "modal", "card", "colors"], default-features = false }
 iced_native = "0.6.0"
 native-dialog = "0.6.3"
 shared_child = "1.0.0"
