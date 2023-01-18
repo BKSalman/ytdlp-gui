@@ -1,6 +1,7 @@
 use std::{
     path::PathBuf,
-    sync::{atomic::AtomicBool, Arc}, process::Child,
+    process::Child,
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use iced::executor;
@@ -9,20 +10,21 @@ use iced::{
         channel::mpsc::{self, UnboundedSender},
         StreamExt,
     },
-    widget::{
-        button, checkbox, column, container, progress_bar, row, text, text_input, Row,
-    },
+    widget::{button, checkbox, column, progress_bar, row, text, text_input},
     Application, Length, Subscription,
 };
+use iced_aw::Card;
 use iced_native::subscription;
-use iced_aw::{Card, Modal, Tabs};
 
-use theme::{widget::Element, Theme, ytdlp_gui_theme};
 use native_dialog::FileDialog;
+// use theme::widget::Element;
 
-mod command;
-mod theme;
-mod video_options;
+pub mod command;
+pub mod theme;
+pub mod video_options;
+pub mod widgets;
+
+use widgets::{Column, Container, Modal, Tabs};
 
 use crate::video_options::{AudioFormat, AudioQuality, VideoFormat, VideoResolution};
 use crate::{
@@ -60,7 +62,6 @@ pub struct YtGUI {
     options: Options,
     download_folder: Option<PathBuf>,
 
-    theme: iced::Theme,
     show_modal: bool,
     placeholder: String,
     active_tab: usize,
@@ -69,7 +70,6 @@ pub struct YtGUI {
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
     progress: f32,
-    should_exit: bool,
     progress_state: ProgressState,
 }
 
@@ -81,7 +81,6 @@ impl Default for YtGUI {
             options: Options::default(),
             download_folder: Some(PathBuf::from("~/Videos")),
 
-            theme: theme::ytdlp_gui_theme(),
             show_modal: false,
             placeholder: "Download link".to_string(),
             active_tab: 0,
@@ -90,7 +89,6 @@ impl Default for YtGUI {
             sender: None,
             command: command::Command::default(),
             progress: 0.,
-            should_exit: false,
             progress_state: ProgressState::Hide,
         }
     }
@@ -114,6 +112,8 @@ impl YtGUI {
 
                 match self.active_tab {
                     0 => {
+                        // Video tab
+
                         let mut video = String::new();
                         args.push(String::from("-S"));
 
@@ -129,11 +129,9 @@ impl YtGUI {
                         // Extract audio from Youtube video
                         args.push(String::from("-x"));
 
-                        // set audio format
                         args.push(String::from("--audio-format"));
                         args.push(self.options.audio_format.options());
 
-                        // set audio quality
                         args.push(String::from("--audio-quality"));
                         args.push(self.options.audio_quality.options());
                     }
@@ -147,8 +145,8 @@ impl YtGUI {
 
                 self.command.command(
                     args,
-                    self.show_modal,
-                    self.ui_message.clone(),
+                    &mut self.show_modal,
+                    &mut self.ui_message,
                     self.sender.clone(),
                 );
             }
@@ -313,7 +311,9 @@ impl Application for YtGUI {
                             println!("killed the child");
                         }
                     }
-                    self.should_exit = true;
+                    return iced::Command::single(iced_native::command::Action::Window(
+                        iced_native::window::Action::Close,
+                    ));
                 }
             }
         }
@@ -321,76 +321,77 @@ impl Application for YtGUI {
         iced::Command::none()
     }
 
-    fn view(&self) -> Element<Message> {
-        let content = column![
-            row![
-                text("Enter URL: "),
-                text_input(
-                    // TODO: make modal appear and notify the use they didn't enter a link
-                    &self.placeholder,
-                    &self.download_link,
-                    Message::InputChanged,
-                )
-                // .style(self.theme)
-                .size(FONT_SIZE)
-                .width(Length::Fill),
-                checkbox("Playlist", self.is_playlist, Message::TogglePlaylist) // .style(self.theme),
-            ]
-            .spacing(7)
-            .align_items(iced::Alignment::Center),
-            Tabs::new(self.active_tab, Message::SelectTab)
-                .push(
-                    iced_aw::TabLabel::Text("Video".to_string()),
-                    column![
-                        Options::video_resolutions(self.options.video_resolution)
-                            .width(Length::Fill),
-                        Options::video_formats(self.options.video_format)
-                    ]
-                )
-                .push(
-                    iced_aw::TabLabel::Text("Audio".to_string()),
-                    column![
-                        Options::audio_qualities(self.options.audio_quality),
-                        Options::audio_formats(self.options.audio_format)
-                    ]
-                )
-                .height(Length::Shrink)
-                .width(Length::Units(1))
-                .tab_bar_width(Length::Units(1)),
-            // .tab_bar_style(self.theme),
-            row![
-                button("Browse").on_press(Message::SelectFolder),
-                // .style(self.theme),
-                text_input(
-                    "",
-                    self.download_folder.clone().unwrap().to_str().unwrap(),
-                    Message::SelectFolderTextInput,
-                ),
-                // .style(self.theme),
-                button(text("Download")).on_press(Message::Command(command::Message::Run(
-                    self.download_link.clone(),
-                ))),
-                // .style(self.theme),
-            ]
-            .spacing(SPACING)
-            .align_items(iced::Alignment::Center),
-        ]
-        .width(Length::Fill)
-        .align_items(iced::Alignment::Fill)
-        .spacing(20)
-        .padding(20);
+    fn view(&self) -> widgets::Element<Message> {
+        let content: widgets::Element<Message> = Column::new()
+            .push(
+                row![
+                    text("Enter URL: "),
+                    text_input(
+                        // TODO: make modal appear and notify the use they didn't enter a link
+                        &self.placeholder,
+                        &self.download_link,
+                        Message::InputChanged,
+                    )
+                    // .style(self.theme)
+                    .size(FONT_SIZE)
+                    .width(Length::Fill),
+                    checkbox("Playlist", self.is_playlist, Message::TogglePlaylist) // .style(self.theme),
+                ]
+                .spacing(7)
+                .align_items(iced::Alignment::Center),
+            )
+            .push(
+                Tabs::new(self.active_tab, Message::SelectTab)
+                    .push(
+                        iced_aw::TabLabel::Text("Video".to_string()),
+                        column![
+                            Options::video_resolutions(self.options.video_resolution)
+                                .width(Length::Fill),
+                            Options::video_formats(self.options.video_format),
+                        ],
+                    )
+                    .push(
+                        iced_aw::TabLabel::Text("Audio".to_string()),
+                        column![
+                            Options::audio_qualities(self.options.audio_quality),
+                            Options::audio_formats(self.options.audio_format),
+                        ],
+                    )
+                    .height(Length::Shrink)
+                    .width(Length::Units(1))
+                    .tab_bar_width(Length::Units(1)),
+            )
+            .push(
+                row![
+                    button("Browse").on_press(Message::SelectFolder),
+                    text_input(
+                        "",
+                        self.download_folder.clone().unwrap().to_str().unwrap(),
+                        Message::SelectFolderTextInput,
+                    ),
+                    button(text("Download")).on_press(Message::Command(command::Message::Run(
+                        self.download_link.clone(),
+                    ))),
+                ]
+                .spacing(SPACING)
+                .align_items(iced::Alignment::Center),
+            )
+            .width(Length::Fill)
+            .align_items(iced::Alignment::Fill)
+            .spacing(20)
+            .padding(20)
+            .into();
 
         let content = Modal::new(self.show_modal, content, || {
-            let progress_bar_row = Row::new();
-
+            let progress_bar_row = row![];
             Card::new(
                 text("Downloading")
                     .horizontal_alignment(iced::alignment::Horizontal::Center)
                     .vertical_alignment(iced::alignment::Vertical::Center),
                 column![
-                    row![text(self.ui_message.clone())
-                        .horizontal_alignment(iced::alignment::Horizontal::Center),]
-                    .height(Length::Fill),
+                    text(self.ui_message.clone())
+                        .horizontal_alignment(iced::alignment::Horizontal::Center)
+                        .height(Length::Fill),
                     match self.progress_state {
                         ProgressState::Show => progress_bar_row
                             .push(progress_bar(0.0..=100., self.progress))
@@ -400,7 +401,6 @@ impl Application for YtGUI {
                 ]
                 .align_items(iced::Alignment::Center),
             )
-            // .style(self.theme)
             .width(Length::Fill)
             .max_height(70)
             .max_width(300)
@@ -410,11 +410,10 @@ impl Application for YtGUI {
 
         // let content = content.explain(Color::BLACK);
 
-        container(content)
+        Container::new(content)
             .height(Length::Fill)
             .width(Length::Fill)
             .center_y()
-            // .style(self.theme)
             .into()
     }
 
@@ -422,15 +421,6 @@ impl Application for YtGUI {
         let iced_events = subscription::events().map(Message::IcedEvent);
         Subscription::batch(vec![bind(), iced_events])
     }
-
-    fn should_exit(&self) -> bool {
-        self.should_exit
-    }
-
-    // fn theme(&self) -> theme::Theme {
-    //     theme::Theme::default()
-    //     // ytdlp_gui_theme()
-    // }
 }
 
 enum MyState {
