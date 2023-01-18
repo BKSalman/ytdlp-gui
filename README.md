@@ -14,6 +14,10 @@ download the rpm package from the releases page then install it with ``sudo dnf 
 ### Ubuntu
 download the deb package from the releases page then install it with ``sudo apt install ./<deb_package_name>``
 
+### Arch
+
+Available in the AUR [ytdlp-gui](https://aur.archlinux.org/packages/ytdlp-gui)
+
 ### other distributions
 
 #### 1- download ``yt-dlp``
