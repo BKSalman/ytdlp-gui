@@ -44,7 +44,13 @@ impl Command {
     //     ..
     // }
 
-    pub fn command(&mut self, args: Vec<String>, show_modal: bool, ui_message: String, sender: Option<UnboundedSender<String>>) {
+    pub fn command(
+        &mut self,
+        args: Vec<String>,
+        show_modal: &mut bool,
+        ui_message: &mut String,
+        sender: Option<UnboundedSender<String>>,
+    ) {
         let mut command = std::process::Command::new("yt-dlp");
 
         #[cfg(target_os = "windows")]
@@ -66,11 +72,11 @@ impl Command {
             }
         };
         let Some(child) = self.shared_child.clone() else {
-                        show_modal = true;
-                        ui_message = String::from("yt-dlp binary is missing, add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`");
+                        *show_modal = true;
+                        *ui_message = String::from("yt-dlp binary is missing, add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`");
                         return;
                     };
-        show_modal = true;
+        *show_modal = true;
 
         if let Some(stderr) = child.take_stderr() {
             let sender = Arc::new(Mutex::new(sender.clone().expect("Sender clone")));
@@ -86,7 +92,7 @@ impl Command {
                 }
             });
         }
-        ui_message = String::from("Initializing...");
+        *ui_message = String::from("Initializing...");
         if let Some(stdout) = child.take_stdout() {
             let sender = Arc::new(Mutex::new(sender.expect("Sender")));
             std::thread::spawn(move || {

@@ -1,7 +1,7 @@
-use iced::widget::{radio, row, text, Row};
+use iced::widget::{radio, row, text};
 use strum::Display;
 
-use crate::{Message, FONT_SIZE, SPACING};
+use crate::{widgets, Message, FONT_SIZE, SPACING};
 
 #[derive(Default, Copy, Clone)]
 pub struct Options {
@@ -52,21 +52,11 @@ pub enum AudioFormat {
 impl VideoResolution {
     pub fn options(&self) -> &str {
         match self {
-            VideoResolution::FourK => {
-                "res:2160,"
-            }
-            VideoResolution::TwoK => {
-                "res:1440,"
-            }
-            VideoResolution::FullHD => {
-                "res:1080,"
-            }
-            VideoResolution::Hd => {
-                "res:720,"
-            }
-            VideoResolution::Sd => {
-                "res:480,"
-            }
+            VideoResolution::FourK => "res:2160,",
+            VideoResolution::TwoK => "res:1440,",
+            VideoResolution::FullHD => "res:1080,",
+            VideoResolution::Hd => "res:720,",
+            VideoResolution::Sd => "res:480,",
         }
     }
 }
@@ -122,7 +112,7 @@ impl AudioQuality {
 const RADIO_DOT_SIZE: u16 = 15;
 
 impl Options {
-    pub fn video_resolutions(resolution: VideoResolution) -> Row<'static, Message> {
+    pub fn video_resolutions(resolution: VideoResolution) -> widgets::Row<'static, Message> {
         row![
             text("Resolution: ").size(FONT_SIZE),
             radio(
@@ -172,11 +162,12 @@ impl Options {
             // .style(theme),
         ]
         .spacing(SPACING)
+        .width(iced::Length::Fill)
         .align_items(iced::Alignment::Center)
         .padding(12)
     }
 
-    pub fn video_formats(format: VideoFormat) -> Row<'static, Message> {
+    pub fn video_formats(format: VideoFormat) -> widgets::Row<'static, Message> {
         row![
             text("Preferred Format: ").size(FONT_SIZE),
             radio(
@@ -204,13 +195,13 @@ impl Options {
                 Message::SelectedVideoFormat,
             )
             .size(RADIO_DOT_SIZE)
-            .text_size(FONT_SIZE) // .style(theme),
+            .text_size(FONT_SIZE), // .style(theme),
         ]
         .spacing(SPACING)
         .align_items(iced::Alignment::Center)
         .padding(12)
     }
-    pub fn audio_formats(format: AudioFormat) -> Row<'static, Message> {
+    pub fn audio_formats(format: AudioFormat) -> widgets::Row<'static, Message> {
         row![
             text("Preferred Format: ").size(FONT_SIZE),
             AudioFormat::ALL
@@ -236,7 +227,7 @@ impl Options {
         .padding(12)
     }
 
-    pub fn audio_qualities(quality: AudioQuality) -> Row<'static, Message> {
+    pub fn audio_qualities(quality: AudioQuality) -> widgets::Row<'static, Message> {
         row![
             text("Quality: ").size(FONT_SIZE),
             AudioQuality::ALL

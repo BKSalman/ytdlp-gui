@@ -1,8 +1,6 @@
 #![cfg_attr(not(debug_assertion), windows_subsystem = "windows")]
 
-pub mod lib;
-
-use iced::{Settings, window};
+use iced::{window, Application, Settings};
 use ytdlp_gui::YtGUI;
 
 fn main() -> iced::Result {
