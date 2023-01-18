@@ -3,7 +3,7 @@
 
 pkgname=ytdlp-gui-bin
 _pkgname=ytdlp-gui
-pkgver=0.2.0
+pkgver=0.2.1
 pkgrel=1
 pkgdesc="a GUI for yt-dlp written in Rust"
 url="https://github.com/BKSalman"
