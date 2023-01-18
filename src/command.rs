@@ -76,6 +76,7 @@ impl Command {
                         *ui_message = String::from("yt-dlp binary is missing, add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`");
                         return;
                     };
+
         *show_modal = true;
 
         if let Some(stderr) = child.take_stderr() {

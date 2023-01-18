@@ -114,14 +114,19 @@ impl YtGUI {
                     0 => {
                         // Video tab
 
-                        let mut video = String::new();
                         args.push(String::from("-S"));
 
-                        video.push_str(self.options.video_resolution.options());
+                        args.push(self.options.video_resolution.options().to_string());
 
-                        video.push_str(self.options.video_format.options());
+                        // after downloading a video with a specific format
+                        // yt-dlp sometimes downloads the audio and video seprately
+                        // then merge them in a different format
+                        // this enforces the chosen format by the user
+                        args.push(String::from("--remux-video"));
 
-                        args.push(video);
+                        args.push(self.options.video_format.options().to_string());
+
+                        println!("{args:#?}");
                     }
                     1 => {
                         // Audio tab

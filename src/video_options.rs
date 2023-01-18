@@ -25,7 +25,7 @@ pub enum VideoResolution {
 pub enum VideoFormat {
     #[default]
     Mp4,
-    ThreeGP,
+    Mkv,
     Webm,
     // Flv,
 }
@@ -52,11 +52,11 @@ pub enum AudioFormat {
 impl VideoResolution {
     pub fn options(&self) -> &str {
         match self {
-            VideoResolution::FourK => "res:2160,",
-            VideoResolution::TwoK => "res:1440,",
-            VideoResolution::FullHD => "res:1080,",
-            VideoResolution::Hd => "res:720,",
-            VideoResolution::Sd => "res:480,",
+            VideoResolution::FourK => "res:2160",
+            VideoResolution::TwoK => "res:1440",
+            VideoResolution::FullHD => "res:1080",
+            VideoResolution::Hd => "res:720",
+            VideoResolution::Sd => "res:480",
         }
     }
 }
@@ -64,9 +64,9 @@ impl VideoResolution {
 impl VideoFormat {
     pub fn options(&self) -> &str {
         match self {
-            VideoFormat::Mp4 => "ext:mp4",
-            VideoFormat::ThreeGP => "ext:3gp",
-            VideoFormat::Webm => "ext:webm",
+            VideoFormat::Mp4 => "mp4",
+            VideoFormat::Mkv => "mkv",
+            VideoFormat::Webm => "webm",
         }
     }
 }
@@ -189,8 +189,8 @@ impl Options {
             .text_size(FONT_SIZE),
             // .style(theme),
             radio(
-                "3GP",
-                VideoFormat::ThreeGP,
+                "MKV",
+                VideoFormat::Mkv,
                 Some(format),
                 Message::SelectedVideoFormat,
             )
