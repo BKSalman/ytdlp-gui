@@ -237,18 +237,12 @@ impl Application for YtGUI {
                     .show_open_single_dir()
                 {
                     self.config.download_folder = Some(path);
-                    self.config
-                        .update_config_file()
-                        .expect("update config file");
                 }
             }
             Message::SelectFolderTextInput(folder_string) => {
                 let path = PathBuf::from(folder_string);
 
                 self.config.download_folder = Some(path);
-                self.config
-                    .update_config_file()
-                    .expect("update config file");
             }
             Message::SelectTab(tab_number) => {
                 self.active_tab = tab_number;
@@ -302,6 +296,9 @@ impl Application for YtGUI {
                     if self.command.kill().is_ok() {
                         info!("killed the child");
                     }
+                    self.config
+                        .update_config_file()
+                        .expect("update config file");
                     return iced::Command::single(iced_native::command::Action::Window(
                         iced_native::window::Action::Close,
                     ));
