@@ -1,3 +1,11 @@
+[tasks.confirm]
+description = "Confirm if the version was updated"
+script = [
+  "echo \"Brother, Did you update the version? [y/n]\"",
+  "read yes_or_no",
+  "if [ $yes_or_no == \"y\" ]; then echo \"Ok :)\"; else echo \"Update it bitch!\"; exit 1; fi",
+]
+
 [tasks.myclean]
 description = "Clean previous build files"
 script = [
@@ -5,7 +13,6 @@ script = [
   "rm -rf windows",
   "rm -rf packages",
 ]
-
 
 [tasks.linux_build]
 description = "Build for linux"
@@ -90,4 +97,4 @@ script = [
 
 
 [tasks.packages]
-dependencies = ["myclean", "package_rpm", "package_deb", "package_aur", "package_linux", "package_windows"]
+dependencies = ["confirm", "myclean", "package_rpm", "package_deb", "package_aur", "package_linux", "package_windows"]
