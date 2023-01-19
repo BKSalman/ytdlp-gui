@@ -1,9 +1,10 @@
+use log::debug;
 use shared_child::SharedChild;
 use std::{
-    io::{BufRead, BufReader},
+    io::{self, BufRead, BufReader},
     path::PathBuf,
     process::Stdio,
-    sync::{atomic::AtomicBool, Arc, Mutex},
+    sync::Arc,
 };
 
 use iced::futures::channel::mpsc::UnboundedSender;
@@ -18,22 +19,13 @@ pub enum Message {
     Finished,
 }
 
-pub enum ProgressState {
-    Show,
-    Hide,
-}
-
 pub struct Command {
-    pub kill_child: Arc<AtomicBool>,
     pub shared_child: Option<Arc<SharedChild>>,
 }
 
 impl Default for Command {
     fn default() -> Self {
-        Self {
-            kill_child: Arc::new(AtomicBool::new(false)),
-            shared_child: None,
-        }
+        Self { shared_child: None }
     }
 }
 
@@ -44,14 +36,22 @@ impl Command {
     //     ..
     // }
 
-    pub fn command(
+    pub fn kill(&self) -> io::Result<()> {
+        if let Some(child) = &self.shared_child {
+            return child.kill();
+        }
+        Ok(())
+    }
+
+    pub fn start(
         &mut self,
         args: Vec<String>,
         show_modal: &mut bool,
         ui_message: &mut String,
+        bin_dir: Option<PathBuf>,
         sender: Option<UnboundedSender<String>>,
     ) {
-        let mut command = std::process::Command::new("yt-dlp");
+        let mut command = std::process::Command::new(bin_dir.unwrap_or("".into()).join("yt-dlp"));
 
         #[cfg(target_os = "windows")]
         {
@@ -59,43 +59,50 @@ impl Command {
             command.creation_flags(CREATE_NO_WINDOW);
         }
 
-        self.shared_child = match SharedChild::spawn(
+        let Ok(shared_child) = SharedChild::spawn(
             command
                 .args(args)
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped()),
-        ) {
-            Ok(child) => Some(Arc::new(child)),
-            Err(e) => {
-                println!("{e}");
-                None
-            }
+        ) else {
+            println!("spawning child process failed");
+            return;
         };
+
+        self.shared_child = Some(Arc::new(shared_child));
+
         let Some(child) = self.shared_child.clone() else {
                         *show_modal = true;
-                        *ui_message = String::from("yt-dlp binary is missing, add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`");
+                        *ui_message = String::from("yt-dlp binary is missing,\
+                             add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`");
                         return;
                     };
 
         *show_modal = true;
+        *ui_message = String::from("Initializing...");
 
         if let Some(stderr) = child.take_stderr() {
-            let sender = Arc::new(Mutex::new(sender.clone().expect("Sender clone")));
+            let Some(sender) = sender.clone() else {
+                *show_modal = true;
+                *ui_message = String::from("Something went wrong");
+                return;
+            };
             std::thread::spawn(move || {
                 let reader = BufReader::new(stderr);
                 for line in reader.lines().flatten() {
-                    (*sender.lock().expect("Sender lock"))
+                    sender
                         .unbounded_send(line)
-                        .unwrap_or_else(|_e| {
-                            #[cfg(debug_assertions)]
-                            println!("{_e}")
-                        });
+                        .unwrap_or_else(|e| debug!("{e}"));
                 }
             });
         }
-        *ui_message = String::from("Initializing...");
+
         if let Some(stdout) = child.take_stdout() {
-            let sender = Arc::new(Mutex::new(sender.expect("Sender")));
+            let Some(sender) = sender else {
+                *show_modal = true;
+                *ui_message = String::from("Something went wrong");
+                return;
+            };
             std::thread::spawn(move || {
                 let mut reader = BufReader::new(stdout);
                 let mut buffer: Vec<u8> = Vec::new();
@@ -110,62 +117,20 @@ impl Command {
 
                     match std::str::from_utf8(&buffer) {
                         Ok(str) => {
-                            (*sender.lock().expect("Sender lock"))
+                            sender
                                 .unbounded_send(str.to_string())
-                                .unwrap_or_else(|_e| {
-                                    #[cfg(debug_assertions)]
-                                    eprintln!("{_e}")
-                                });
+                                .unwrap_or_else(|e| debug!("{e}"));
                         }
                         Err(err) => {
-                            #[cfg(debug_assertions)]
-                            eprintln!("{err}");
+                            debug!("{err}");
                         }
                     }
                     buffer.clear();
                 }
-                (*sender.lock().expect("Sender lock"))
+                sender
                     .unbounded_send(String::from("Finished"))
-                    .unwrap_or_else(|_e| {
-                        #[cfg(debug_assertions)]
-                        eprintln!("{_e}")
-                    });
+                    .unwrap_or_else(|_e| debug!("{_e}"));
             });
         }
     }
-}
-
-pub fn playlist_options(is_playlist: bool, download_folder: Option<PathBuf>) -> Vec<String> {
-    let mut args = Vec::new();
-    if is_playlist {
-        args.push(String::from("--yes-playlist"));
-        args.push(String::from("-P"));
-        args.push(
-            download_folder
-                .clone()
-                .expect("No Videos Directory")
-                .to_str()
-                .expect("No Videos Directory")
-                .to_string(),
-        );
-        args.push(String::from("-o %(playlist)s/%(title)s.%(ext)s"));
-    } else {
-        args.push(String::from("--break-on-reject"));
-        args.push(String::from("--match-filter"));
-        args.push(String::from("!playlist"));
-        args.push(String::from("--no-playlist"));
-        args.push(String::from("-P"));
-        args.push(
-            download_folder
-                .clone()
-                .expect("No Videos Directory")
-                .to_str()
-                .expect("No Videos Directory")
-                .to_string(),
-        );
-        args.push(String::from("-o"));
-        args.push(String::from("%(title)s.%(ext)s"));
-    }
-
-    args
 }

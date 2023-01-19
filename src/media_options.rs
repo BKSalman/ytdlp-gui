@@ -1,9 +1,12 @@
+use std::path::PathBuf;
+
 use iced::widget::{radio, row, text};
+use serde::{Deserialize, Serialize};
 use strum::Display;
 
 use crate::{widgets, Message, FONT_SIZE, SPACING};
 
-#[derive(Default, Copy, Clone)]
+#[derive(Deserialize, Serialize, Debug, Default, Copy, Clone)]
 pub struct Options {
     pub video_resolution: VideoResolution,
     pub video_format: VideoFormat,
@@ -11,7 +14,7 @@ pub struct Options {
     pub audio_format: AudioFormat,
 }
 
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum VideoResolution {
     FourK,
     TwoK,
@@ -21,7 +24,7 @@ pub enum VideoResolution {
     Sd,
 }
 
-#[derive(Display, Default, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum VideoFormat {
     #[default]
     Mp4,
@@ -30,7 +33,7 @@ pub enum VideoFormat {
     // Flv,
 }
 
-#[derive(Display, Default, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Display, Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum AudioQuality {
     Best,
     #[default]
@@ -39,7 +42,7 @@ pub enum AudioQuality {
     Low,
 }
 
-#[derive(Display, Default, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Display, Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum AudioFormat {
     #[default]
     Mp3,
@@ -123,7 +126,6 @@ impl Options {
             )
             .size(RADIO_DOT_SIZE)
             .text_size(FONT_SIZE),
-            // .style(theme),
             radio(
                 "1440p",
                 VideoResolution::TwoK,
@@ -132,7 +134,6 @@ impl Options {
             )
             .size(RADIO_DOT_SIZE)
             .text_size(FONT_SIZE),
-            // .style(theme),
             radio(
                 "1080p",
                 VideoResolution::FullHD,
@@ -141,7 +142,6 @@ impl Options {
             )
             .size(RADIO_DOT_SIZE)
             .text_size(FONT_SIZE),
-            // .style(theme),
             radio(
                 "720p",
                 VideoResolution::Hd,
@@ -150,7 +150,6 @@ impl Options {
             )
             .size(RADIO_DOT_SIZE)
             .text_size(FONT_SIZE),
-            // .style(theme),
             radio(
                 "480p",
                 VideoResolution::Sd,
@@ -159,7 +158,6 @@ impl Options {
             )
             .size(RADIO_DOT_SIZE)
             .text_size(FONT_SIZE),
-            // .style(theme),
         ]
         .spacing(SPACING)
         .width(iced::Length::Fill)
@@ -178,7 +176,6 @@ impl Options {
             )
             .size(RADIO_DOT_SIZE)
             .text_size(FONT_SIZE),
-            // .style(theme),
             radio(
                 "WEBM",
                 VideoFormat::Webm,
@@ -187,7 +184,6 @@ impl Options {
             )
             .size(RADIO_DOT_SIZE)
             .text_size(FONT_SIZE),
-            // .style(theme),
             radio(
                 "MKV",
                 VideoFormat::Mkv,
@@ -195,12 +191,13 @@ impl Options {
                 Message::SelectedVideoFormat,
             )
             .size(RADIO_DOT_SIZE)
-            .text_size(FONT_SIZE), // .style(theme),
+            .text_size(FONT_SIZE),
         ]
         .spacing(SPACING)
         .align_items(iced::Alignment::Center)
         .padding(12)
     }
+
     pub fn audio_formats(format: AudioFormat) -> widgets::Row<'static, Message> {
         row![
             text("Preferred Format: ").size(FONT_SIZE),
@@ -217,7 +214,6 @@ impl Options {
                         )
                         .size(RADIO_DOT_SIZE)
                         .text_size(FONT_SIZE),
-                        // .style(theme),
                     )
                     .spacing(SPACING)
                 }),
@@ -243,7 +239,6 @@ impl Options {
                         )
                         .size(RADIO_DOT_SIZE)
                         .text_size(FONT_SIZE),
-                        // .style(theme),
                     )
                     .spacing(SPACING)
                 }),
@@ -252,4 +247,39 @@ impl Options {
         .align_items(iced::Alignment::Center)
         .padding(12)
     }
+}
+
+pub fn playlist_options(is_playlist: bool, download_folder: Option<PathBuf>) -> Vec<String> {
+    let mut args = Vec::new();
+    if is_playlist {
+        args.push(String::from("--yes-playlist"));
+        args.push(String::from("-P"));
+        args.push(
+            download_folder
+                .clone()
+                .unwrap_or("~/Videos".into())
+                .to_str()
+                .expect("directory as str")
+                .to_string(),
+        );
+        args.push(String::from("-o %(playlist)s/%(title)s.%(ext)s"));
+    } else {
+        args.push(String::from("--break-on-reject"));
+        args.push(String::from("--match-filter"));
+        args.push(String::from("!playlist"));
+        args.push(String::from("--no-playlist"));
+        args.push(String::from("-P"));
+        args.push(
+            download_folder
+                .clone()
+                .expect("No Videos Directory")
+                .to_str()
+                .expect("No Videos Directory")
+                .to_string(),
+        );
+        args.push(String::from("-o"));
+        args.push(String::from("%(title)s.%(ext)s"));
+    }
+
+    args
 }

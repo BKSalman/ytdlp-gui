@@ -13,12 +13,17 @@ authors = ["Salman"]
 
 [dependencies]
 anyhow = "1.0.65"
+dirs = "4.0.0"
+env_logger = "0.10.0"
 iced = "0.7.0"
 iced_aw = { git = "https://github.com/iced-rs/iced_aw/", rev = "120087c", features = ["tabs", "modal", "card", "colors"], default-features = false }
 iced_native = "0.8.0"
+log = "0.4.17"
 native-dialog = "0.6.3"
+serde = { version = "1.0.152", features = ["derive"] }
 shared_child = "1.0.0"
 strum = { version = "0.24.1", features = ["derive"] }
+toml = "0.5.10"
 
 [package.metadata.generate-rpm]
 assets = [

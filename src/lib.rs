@@ -1,36 +1,31 @@
-use std::{
-    path::PathBuf,
-    process::Child,
-    sync::{atomic::AtomicBool, Arc},
-};
+use std::path::PathBuf;
+use std::{fs, io};
 
-use iced::executor;
+use iced::{executor, widget::container};
 use iced::{
-    futures::{
-        channel::mpsc::{self, UnboundedSender},
-        StreamExt,
-    },
+    futures::channel::mpsc::UnboundedSender,
     widget::{button, checkbox, column, progress_bar, row, text, text_input},
     Application, Length, Subscription,
 };
 use iced_aw::Card;
 use iced_native::subscription;
 
+use log::info;
 use native_dialog::FileDialog;
+use serde::{Deserialize, Serialize};
 // use theme::widget::Element;
 
 pub mod command;
+pub mod media_options;
+pub mod progress;
 pub mod theme;
-pub mod video_options;
 pub mod widgets;
 
-use widgets::{Column, Container, Modal, Tabs};
+use widgets::{Modal, Tabs};
 
-use crate::video_options::{AudioFormat, AudioQuality, VideoFormat, VideoResolution};
-use crate::{
-    command::{playlist_options, ProgressState},
-    video_options::Options,
-};
+use crate::media_options::{playlist_options, Options};
+use crate::media_options::{AudioFormat, AudioQuality, VideoFormat, VideoResolution};
+use crate::progress::bind;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -50,63 +45,56 @@ pub enum Message {
     SelectFolder,
     SelectFolderTextInput(String),
     SelectTab(usize),
-    EventRecieved(String),
+    ProgressEvent(String),
     Ready(UnboundedSender<String>),
     Command(command::Message),
     IcedEvent(iced_native::Event),
 }
 
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct Config {
+    bin_path: Option<PathBuf>,
+    download_folder: Option<PathBuf>,
+    options: Options,
+}
+
+impl Config {
+    fn update_config_file(&self) -> io::Result<()> {
+        let current_config = toml::to_string(self).expect("config to string");
+        let config_file = dirs::config_dir()
+            .expect("config directory")
+            .join("ytdlp-gui/config.toml");
+        fs::write(config_file, &current_config)?;
+        info!("Updated config file to {}", current_config);
+        Ok(())
+    }
+}
+
 pub struct YtGUI {
     download_link: String,
     is_playlist: bool,
-    options: Options,
-    download_folder: Option<PathBuf>,
+    config: Config,
 
     show_modal: bool,
-    placeholder: String,
     active_tab: usize,
     ui_message: String,
 
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
     progress: f32,
-    progress_state: ProgressState,
-}
-
-impl Default for YtGUI {
-    fn default() -> Self {
-        Self {
-            download_link: String::default(),
-            is_playlist: bool::default(),
-            options: Options::default(),
-            download_folder: Some(PathBuf::from("~/Videos")),
-
-            show_modal: false,
-            placeholder: "Download link".to_string(),
-            active_tab: 0,
-            ui_message: String::default(),
-
-            sender: None,
-            command: command::Command::default(),
-            progress: 0.,
-            progress_state: ProgressState::Hide,
-        }
-    }
 }
 
 impl YtGUI {
     pub fn command_update(&mut self, message: command::Message) {
-        let mut args = Vec::new();
-
-        self.command.kill_child = Arc::new(AtomicBool::new(false));
         match message {
             command::Message::Run(link) => {
+                let mut args = Vec::new();
+
                 if link.is_empty() {
-                    self.placeholder = String::from("No Download link was provided!");
+                    self.show_modal = true;
+                    self.ui_message = String::from("No Download link was provided!");
                     return;
                 }
-
-                self.placeholder = String::from("Download link");
 
                 args.push(link);
 
@@ -116,7 +104,7 @@ impl YtGUI {
 
                         args.push(String::from("-S"));
 
-                        args.push(self.options.video_resolution.options().to_string());
+                        args.push(self.config.options.video_resolution.options().to_string());
 
                         // after downloading a video with a specific format
                         // yt-dlp sometimes downloads the audio and video seprately
@@ -124,7 +112,7 @@ impl YtGUI {
                         // this enforces the chosen format by the user
                         args.push(String::from("--remux-video"));
 
-                        args.push(self.options.video_format.options().to_string());
+                        args.push(self.config.options.video_format.options().to_string());
 
                         println!("{args:#?}");
                     }
@@ -135,67 +123,50 @@ impl YtGUI {
                         args.push(String::from("-x"));
 
                         args.push(String::from("--audio-format"));
-                        args.push(self.options.audio_format.options());
+                        args.push(self.config.options.audio_format.options());
 
                         args.push(String::from("--audio-quality"));
-                        args.push(self.options.audio_quality.options());
+                        args.push(self.config.options.audio_quality.options());
                     }
                     _ => {}
                 }
 
                 args.append(&mut playlist_options(
                     self.is_playlist,
-                    self.download_folder.clone(),
+                    self.config.download_folder.clone(),
                 ));
 
-                self.command.command(
+                self.command.start(
                     args,
                     &mut self.show_modal,
                     &mut self.ui_message,
+                    self.config.bin_path.clone(),
                     self.sender.clone(),
                 );
             }
             command::Message::Stop => {
-                match self
-                    .command
-                    .shared_child
-                    .clone()
-                    .expect("Shared child")
-                    .kill()
-                {
+                match self.command.kill() {
                     Ok(_) => {
-                        #[cfg(debug_assertions)]
-                        println!("killed the child")
+                        info!("killed the child")
                     }
-                    Err(_e) => {
-                        #[cfg(debug_assertions)]
-                        println!("{_e}")
+                    Err(e) => {
+                        info!("{e}")
                     }
                 };
                 self.show_modal = false;
-                self.progress_state = ProgressState::Hide;
                 self.progress = 0.;
                 self.ui_message.clear();
             }
             command::Message::Finished => {
-                match self
-                    .command
-                    .shared_child
-                    .clone()
-                    .expect("Shared child")
-                    .kill()
-                {
+                match self.command.kill() {
                     Ok(_) => {
-                        #[cfg(debug_assertions)]
-                        println!("killed the child")
+                        info!("killed the child")
                     }
-                    Err(_e) => {
-                        #[cfg(debug_assertions)]
-                        println!("{_e}")
+                    Err(e) => {
+                        info!("{e}")
                     }
                 };
                 self.progress = 0.;
-                self.progress_state = ProgressState::Hide;
                 if self.ui_message.contains("Already") {
                     return;
                 }
@@ -208,11 +179,28 @@ impl YtGUI {
 impl Application for YtGUI {
     type Message = Message;
     type Executor = executor::Default;
-    type Flags = ();
+    type Flags = Config;
     type Theme = theme::Theme;
 
-    fn new(_flags: Self::Flags) -> (Self, iced::Command<Message>) {
-        (Self::default(), iced::Command::none())
+    fn new(flags: Self::Flags) -> (Self, iced::Command<Message>) {
+        env_logger::init();
+        info!("{flags:#?}");
+        (
+            Self {
+                download_link: String::default(),
+                is_playlist: bool::default(),
+                config: flags,
+
+                show_modal: false,
+                active_tab: 0,
+                ui_message: String::default(),
+
+                sender: None,
+                command: command::Command::default(),
+                progress: 0.,
+            },
+            iced::Command::none(),
+        )
     }
 
     fn title(&self) -> String {
@@ -228,51 +216,56 @@ impl Application for YtGUI {
                 self.download_link = input;
             }
             Message::SelectedResolution(resolution) => {
-                self.options.video_resolution = resolution;
+                self.config.options.video_resolution = resolution;
             }
             Message::TogglePlaylist(is_playlist) => {
                 self.is_playlist = is_playlist;
             }
             Message::SelectedVideoFormat(format) => {
-                self.options.video_format = format;
+                self.config.options.video_format = format;
             }
             Message::SelectFolder => {
                 if let Ok(Some(path)) = FileDialog::new()
                     .set_location(
-                        self.download_folder
+                        self.config
+                            .download_folder
                             .clone()
-                            .expect("download folder")
+                            .unwrap_or("~/Videos".into())
                             .to_str()
-                            .expect("download folder as string"),
+                            .expect("download folder as str"),
                     )
                     .show_open_single_dir()
                 {
-                    self.download_folder = Some(path);
+                    self.config.download_folder = Some(path);
+                    self.config
+                        .update_config_file()
+                        .expect("update config file");
                 }
             }
             Message::SelectFolderTextInput(folder_string) => {
                 let path = PathBuf::from(folder_string);
 
-                self.download_folder = Some(path);
+                self.config.download_folder = Some(path);
+                self.config
+                    .update_config_file()
+                    .expect("update config file");
             }
             Message::SelectTab(tab_number) => {
                 self.active_tab = tab_number;
             }
             Message::SelectedAudioFormat(format) => {
-                self.options.audio_format = format;
+                self.config.options.audio_format = format;
             }
             Message::SelectedAudioQuality(quality) => {
-                self.options.audio_quality = quality;
+                self.config.options.audio_quality = quality;
             }
-            Message::EventRecieved(progress) => {
+            Message::ProgressEvent(progress) => {
                 if self.progress == 100. {
                     self.ui_message = String::from("Processing...");
                     return iced::Command::none();
                 }
 
                 if progress.contains('%') {
-                    self.progress_state = ProgressState::Show;
-
                     let words = progress
                         .split(' ')
                         .map(String::from)
@@ -288,20 +281,16 @@ impl Application for YtGUI {
                     return iced::Command::none();
                 } else if progress.contains("[ExtractAudio]") {
                     self.ui_message = String::from("Extracting audio");
-                    self.progress_state = ProgressState::Hide;
                     return iced::Command::none();
                 } else if progress.contains("has already been downloaded") {
                     self.ui_message = String::from("Already downloaded");
-                    self.progress_state = ProgressState::Hide;
                     return iced::Command::none();
                 } else if progress.contains("Encountered a video that did not match filter") {
                     self.ui_message =
                         String::from("Playlist box needs to be checked to download a playlist");
-                    self.progress_state = ProgressState::Hide;
                     return iced::Command::none();
                 }
-                #[cfg(debug_assertions)]
-                println!("{progress}");
+                info!("{progress}");
             }
             Message::Ready(sender) => {
                 self.sender = Some(sender);
@@ -310,11 +299,8 @@ impl Application for YtGUI {
                 if let iced_native::Event::Window(iced_native::window::Event::CloseRequested) =
                     event
                 {
-                    if let Some(child) = self.command.shared_child.clone() {
-                        if child.kill().is_ok() {
-                            #[cfg(debug_assertions)]
-                            println!("killed the child");
-                        }
+                    if self.command.kill().is_ok() {
+                        info!("killed the child");
                     }
                     return iced::Command::single(iced_native::command::Action::Window(
                         iced_native::window::Action::Close,
@@ -327,68 +313,61 @@ impl Application for YtGUI {
     }
 
     fn view(&self) -> widgets::Element<Message> {
-        let content: widgets::Element<Message> = Column::new()
-            .push(
-                row![
-                    text("Enter URL: "),
-                    text_input(
-                        // TODO: make modal appear and notify the use they didn't enter a link
-                        &self.placeholder,
-                        &self.download_link,
-                        Message::InputChanged,
-                    )
-                    // .style(self.theme)
+        let content: widgets::Element<Message> = column![
+            row![
+                text("Enter URL: "),
+                text_input("Download link", &self.download_link, Message::InputChanged,)
                     .size(FONT_SIZE)
                     .width(Length::Fill),
-                    checkbox("Playlist", self.is_playlist, Message::TogglePlaylist) // .style(self.theme),
-                ]
-                .spacing(7)
-                .align_items(iced::Alignment::Center),
-            )
-            .push(
-                Tabs::new(self.active_tab, Message::SelectTab)
-                    .push(
-                        iced_aw::TabLabel::Text("Video".to_string()),
-                        column![
-                            Options::video_resolutions(self.options.video_resolution)
-                                .width(Length::Fill),
-                            Options::video_formats(self.options.video_format),
-                        ],
-                    )
-                    .push(
-                        iced_aw::TabLabel::Text("Audio".to_string()),
-                        column![
-                            Options::audio_qualities(self.options.audio_quality),
-                            Options::audio_formats(self.options.audio_format),
-                        ],
-                    )
-                    .height(Length::Shrink)
-                    .width(Length::Units(1))
-                    .tab_bar_width(Length::Units(1)),
-            )
-            .push(
-                row![
-                    button("Browse").on_press(Message::SelectFolder),
-                    text_input(
-                        "",
-                        self.download_folder.clone().unwrap().to_str().unwrap(),
-                        Message::SelectFolderTextInput,
-                    ),
-                    button(text("Download")).on_press(Message::Command(command::Message::Run(
-                        self.download_link.clone(),
-                    ))),
-                ]
-                .spacing(SPACING)
-                .align_items(iced::Alignment::Center),
-            )
-            .width(Length::Fill)
-            .align_items(iced::Alignment::Fill)
-            .spacing(20)
-            .padding(20)
-            .into();
+                checkbox("Playlist", self.is_playlist, Message::TogglePlaylist)
+            ]
+            .spacing(7)
+            .align_items(iced::Alignment::Center),
+            Tabs::new(self.active_tab, Message::SelectTab)
+                .push(
+                    iced_aw::TabLabel::Text("Video".to_string()),
+                    column![
+                        Options::video_resolutions(self.config.options.video_resolution)
+                            .width(Length::Fill),
+                        Options::video_formats(self.config.options.video_format),
+                    ],
+                )
+                .push(
+                    iced_aw::TabLabel::Text("Audio".to_string()),
+                    column![
+                        Options::audio_qualities(self.config.options.audio_quality),
+                        Options::audio_formats(self.config.options.audio_format),
+                    ],
+                )
+                .height(Length::Shrink)
+                .width(Length::Units(1))
+                .tab_bar_width(Length::Units(1)),
+            row![
+                button("Browse").on_press(Message::SelectFolder),
+                text_input(
+                    "",
+                    self.config
+                        .download_folder
+                        .clone()
+                        .unwrap_or("~/Videos".into())
+                        .to_str()
+                        .unwrap(),
+                    Message::SelectFolderTextInput,
+                ),
+                button(text("Download")).on_press(Message::Command(command::Message::Run(
+                    self.download_link.clone(),
+                ))),
+            ]
+            .spacing(SPACING)
+            .align_items(iced::Alignment::Center),
+        ]
+        .width(Length::Fill)
+        .align_items(iced::Alignment::Fill)
+        .spacing(20)
+        .padding(20)
+        .into();
 
         let content = Modal::new(self.show_modal, content, || {
-            let progress_bar_row = row![];
             Card::new(
                 text("Downloading")
                     .horizontal_alignment(iced::alignment::Horizontal::Center)
@@ -397,12 +376,7 @@ impl Application for YtGUI {
                     text(self.ui_message.clone())
                         .horizontal_alignment(iced::alignment::Horizontal::Center)
                         .height(Length::Fill),
-                    match self.progress_state {
-                        ProgressState::Show => progress_bar_row
-                            .push(progress_bar(0.0..=100., self.progress))
-                            .height(Length::Fill),
-                        ProgressState::Hide => progress_bar_row.height(Length::Units(0)),
-                    }
+                    row![progress_bar(0.0..=100., self.progress)]
                 ]
                 .align_items(iced::Alignment::Center),
             )
@@ -415,7 +389,7 @@ impl Application for YtGUI {
 
         // let content = content.explain(Color::BLACK);
 
-        Container::new(content)
+        container(content)
             .height(Length::Fill)
             .width(Length::Fill)
             .center_y()
@@ -426,56 +400,4 @@ impl Application for YtGUI {
         let iced_events = subscription::events().map(Message::IcedEvent);
         Subscription::batch(vec![bind(), iced_events])
     }
-}
-
-enum MyState {
-    Starting,
-    Ready(mpsc::UnboundedReceiver<String>),
-}
-
-pub fn bind() -> Subscription<Message> {
-    struct Progress;
-
-    subscription::unfold(
-        std::any::TypeId::of::<Progress>(),
-        MyState::Starting,
-        |state| async move {
-            match state {
-                MyState::Starting => {
-                    let (sender, receiver) = mpsc::unbounded();
-
-                    (Some(Message::Ready(sender)), MyState::Ready(receiver))
-                }
-                MyState::Ready(mut progress_receiver) => {
-                    let received = progress_receiver.next().await;
-                    match received {
-                        Some(progress) => {
-                            if progress.contains("Finished") {
-                                (
-                                    Some(Message::Command(command::Message::Finished)),
-                                    MyState::Ready(progress_receiver),
-                                )
-                            } else {
-                                (
-                                    Some(Message::EventRecieved(progress)),
-                                    MyState::Ready(progress_receiver),
-                                )
-                            }
-                        }
-                        None => (None, MyState::Ready(progress_receiver)),
-                    }
-                }
-            }
-        },
-    )
-}
-
-pub enum ChildMessage {
-    Ready(UnboundedSender<Child>),
-    ChildEvent(Child),
-}
-
-pub enum ChildState {
-    Starting,
-    Ready(mpsc::UnboundedReceiver<Child>),
 }
