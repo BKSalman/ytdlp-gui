@@ -33,3 +33,24 @@ b- or download the [binary](https://github.com/yt-dlp/yt-dlp/releases/latest/dow
 
 ## Windows
 ##### just download the zip file from the releases page, extract it in a subfolder and start the ``ytdlp-gui.exe``
+
+# Configuration
+
+For v0.2.2+ the application saves configuration in the default config directory for the respective platform/OS in ``<config_dir>/ytdlp-gui/config.toml``
+
+the default file looks like this:
+
+```toml
+# Optional
+# This is the path to the bin only, not the yt-dlp's bin
+bin_path = "<some_cool_path>" # if not set the command will be `yt-dlp <app_args>`
+
+# Optional
+download_folder = "<some_cool_path>" # default = "~/Videos"
+
+[options]
+video_resolution = "FullHD" # options: "Sd" "Hd" "FullHD" "TwoK" "FourK"
+video_format = "Mp4" # options: "Mp4" "Mkv" "Webm"
+audio_quality = "Good" # options: "Best" "Good" "Medium" "Low"
+audio_format = "Mp3" #  options: "Mp3" "Wav" "Vorbis" "M4a" "Opus"
+```
