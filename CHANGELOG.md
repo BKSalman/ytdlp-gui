@@ -20,4 +20,4 @@
 ## 0.2.1
 
 - Major: Update ``Iced`` to v0.7.0
-- Bugfix: Merge format (#9)
+- Bugfix: Merge format [#9](https://github.com/BKSalman/ytdlp-gui/issues/9)
