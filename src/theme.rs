@@ -167,7 +167,7 @@ impl radio::StyleSheet for Theme {
     fn hovered(&self, style: &Self::Style, is_active: bool) -> radio::Appearance {
         radio::Appearance {
             background: Color { a: 0.5, ..SURFACE }.into(),
-            ..self.active(&style, is_active)
+            ..self.active(style, is_active)
         }
     }
 }
@@ -221,7 +221,7 @@ impl button::StyleSheet for Theme {
         button::Appearance {
             background: HOVERED.into(),
             text_color: Color::WHITE,
-            ..self.active(&style)
+            ..self.active(style)
         }
     }
 
@@ -229,7 +229,7 @@ impl button::StyleSheet for Theme {
         button::Appearance {
             border_width: 1.0,
             border_color: Color::WHITE,
-            ..self.hovered(&style)
+            ..self.hovered(style)
         }
     }
 }

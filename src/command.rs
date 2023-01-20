@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, error};
 use shared_child::SharedChild;
 use std::{
     io::{self, BufRead, BufReader},
@@ -19,14 +19,9 @@ pub enum Message {
     Finished,
 }
 
+#[derive(Default)]
 pub struct Command {
     pub shared_child: Option<Arc<SharedChild>>,
-}
-
-impl Default for Command {
-    fn default() -> Self {
-        Self { shared_child: None }
-    }
 }
 
 impl Command {
@@ -51,7 +46,7 @@ impl Command {
         bin_dir: Option<PathBuf>,
         sender: Option<UnboundedSender<String>>,
     ) {
-        let mut command = std::process::Command::new(bin_dir.unwrap_or("".into()).join("yt-dlp"));
+        let mut command = std::process::Command::new(bin_dir.unwrap_or_default().join("yt-dlp"));
 
         #[cfg(target_os = "windows")]
         {
@@ -65,7 +60,9 @@ impl Command {
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped()),
         ) else {
-            println!("spawning child process failed");
+            error!("Spawning child process failed");
+            *show_modal = true;
+            *ui_message = String::from("yt-dlp binary is missing");
             return;
         };
 
@@ -73,8 +70,8 @@ impl Command {
 
         let Some(child) = self.shared_child.clone() else {
                         *show_modal = true;
-                        *ui_message = String::from("yt-dlp binary is missing,\
-                             add yt-dlp to your PATH and give it executable permissions `chmod +x yt-dlp`");
+                        *ui_message = String::from("Something went wrong");
+                        error!("No child process");
                         return;
                     };
 

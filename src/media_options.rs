@@ -256,8 +256,7 @@ pub fn playlist_options(is_playlist: bool, download_folder: Option<PathBuf>) -> 
         args.push(String::from("-P"));
         args.push(
             download_folder
-                .clone()
-                .unwrap_or("~/Videos".into())
+                .unwrap_or_else(|| "~/Videos".into())
                 .to_str()
                 .expect("directory as str")
                 .to_string(),
@@ -271,8 +270,7 @@ pub fn playlist_options(is_playlist: bool, download_folder: Option<PathBuf>) -> 
         args.push(String::from("-P"));
         args.push(
             download_folder
-                .clone()
-                .unwrap_or("~/Videos".into())
+                .unwrap_or_else(|| "~/Videos".into())
                 .to_str()
                 .expect("download folder as str")
                 .to_string(),

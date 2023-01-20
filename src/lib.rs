@@ -53,7 +53,7 @@ pub enum Message {
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Config {
-    bin_path: Option<PathBuf>,
+    bin_dir: Option<PathBuf>,
     download_folder: Option<PathBuf>,
     options: Options,
 }
@@ -140,7 +140,7 @@ impl YtGUI {
                     args,
                     &mut self.show_modal,
                     &mut self.ui_message,
-                    self.config.bin_path.clone(),
+                    self.config.bin_dir.clone(),
                     self.sender.clone(),
                 );
             }
@@ -230,7 +230,7 @@ impl Application for YtGUI {
                         self.config
                             .download_folder
                             .clone()
-                            .unwrap_or("~/Videos".into())
+                            .unwrap_or_else(|| "~/Videos".into())
                             .to_str()
                             .expect("download folder as str"),
                     )
@@ -346,7 +346,7 @@ impl Application for YtGUI {
                     self.config
                         .download_folder
                         .clone()
-                        .unwrap_or("~/Videos".into())
+                        .unwrap_or_else(|| "~/Videos".into())
                         .to_str()
                         .unwrap(),
                     Message::SelectFolderTextInput,
