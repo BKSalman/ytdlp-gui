@@ -2,7 +2,7 @@
 
 ## Unversioned
 
-- Show message when 
+- Minor: Show message in modal when yt-dlp binary is missing
 
 ## 0.2.4
 
