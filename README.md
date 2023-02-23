@@ -43,7 +43,9 @@ the default file looks like this:
 ```toml
 # Optional
 # This is the directory of the bin, not the bin itself
-bin_path = "<some_cool_path>" # if not set the command will be `yt-dlp <app_args>`
+# bin_path = "<some_cool_path>" # (0.2.4)
+
+bin_dir = "<some_cool_path>" # (0.2.5+) if not set the command will be `yt-dlp <app_args>`
 
 # Optional
 download_folder = "<some_cool_path>" # default = "~/Videos"

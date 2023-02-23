@@ -114,7 +114,7 @@ impl YtGUI {
 
                         args.push(self.config.options.video_format.options().to_string());
 
-                        println!("{args:#?}");
+                        info!("{args:#?}");
                     }
                     1 => {
                         // Audio tab
@@ -147,7 +147,7 @@ impl YtGUI {
             command::Message::Stop => {
                 match self.command.kill() {
                     Ok(_) => {
-                        info!("killed the child")
+                        info!("killed child process")
                     }
                     Err(e) => {
                         info!("{e}")
@@ -160,7 +160,7 @@ impl YtGUI {
             command::Message::Finished => {
                 match self.command.kill() {
                     Ok(_) => {
-                        info!("killed the child")
+                        info!("killed child process")
                     }
                     Err(e) => {
                         info!("{e}")
@@ -294,7 +294,7 @@ impl Application for YtGUI {
                     event
                 {
                     if self.command.kill().is_ok() {
-                        info!("killed the child");
+                        info!("killed child process");
                     }
                     self.config
                         .update_config_file()

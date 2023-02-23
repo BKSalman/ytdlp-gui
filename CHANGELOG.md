@@ -1,7 +1,10 @@
 # Changelog
 
-## Unversioned
+## unversioned
 
+## 0.2.5
+
+- Bugfix: Update the packaged yt-dlp version for windows, that will solve [this issue](https://github.com/BKSalman/ytdlp-gui/issues/13)
 - Minor: Show message in modal when yt-dlp binary is missing
 
 ## 0.2.4
