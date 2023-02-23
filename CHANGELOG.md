@@ -2,6 +2,11 @@
 
 ## unversioned
 
+- Major: Added general logs to stderr and a temporary file in temp directory
+- Major: Added Download logs
+- Minor: Options and settings now save on download instead of saving on app close
+- Dev: Replaced env_logger with log4rs to use it for std logging and file logging
+
 ## 0.2.5
 
 - Bugfix: Update the packaged yt-dlp version for windows, that will solve [this issue](https://github.com/BKSalman/ytdlp-gui/issues/13)

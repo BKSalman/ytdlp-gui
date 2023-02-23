@@ -89,7 +89,7 @@ impl Command {
                 for line in reader.lines().flatten() {
                     sender
                         .unbounded_send(line)
-                        .unwrap_or_else(|e| debug!("{e}"));
+                        .unwrap_or_else(|e| error!("{e}"));
                 }
             });
         }
@@ -126,7 +126,7 @@ impl Command {
                 }
                 sender
                     .unbounded_send(String::from("Finished"))
-                    .unwrap_or_else(|_e| debug!("{_e}"));
+                    .unwrap_or_else(|_e| error!("{_e}"));
             });
         }
     }

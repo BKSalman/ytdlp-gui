@@ -4,9 +4,11 @@ use std::fs;
 
 use iced::{window, Application, Settings};
 use log::warn;
-use ytdlp_gui::{Config, YtGUI};
+use ytdlp_gui::{setup_logger, Config, YtGUI};
 
 fn main() -> iced::Result {
+    setup_logger();
+
     let config_dir = dirs::config_dir()
         .expect("config directory")
         .join("ytdlp-gui/");

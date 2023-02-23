@@ -1,6 +1,9 @@
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::PathBuf;
 use std::{fs, io};
 
+use chrono::Local;
 use iced::{executor, widget::container};
 use iced::{
     futures::channel::mpsc::UnboundedSender,
@@ -10,7 +13,13 @@ use iced::{
 use iced_aw::Card;
 use iced_native::subscription;
 
-use log::info;
+use log::{error, info, LevelFilter};
+use log4rs::append::console::{ConsoleAppender, Target};
+use log4rs::append::file::FileAppender;
+use log4rs::config::Appender;
+use log4rs::config::Root;
+use log4rs::encode::pattern::PatternEncoder;
+use log4rs::filter::threshold::ThresholdFilter;
 use native_dialog::FileDialog;
 use serde::{Deserialize, Serialize};
 // use theme::widget::Element;
@@ -88,6 +97,10 @@ impl YtGUI {
     pub fn command_update(&mut self, message: command::Message) {
         match message {
             command::Message::Run(link) => {
+                self.config
+                    .update_config_file()
+                    .expect("update config file");
+
                 let mut args = Vec::new();
 
                 if link.is_empty() {
@@ -150,7 +163,7 @@ impl YtGUI {
                         info!("killed child process")
                     }
                     Err(e) => {
-                        info!("{e}")
+                        error!("{e}")
                     }
                 };
                 self.show_modal = false;
@@ -163,7 +176,7 @@ impl YtGUI {
                         info!("killed child process")
                     }
                     Err(e) => {
-                        info!("{e}")
+                        error!("{e}")
                     }
                 };
                 self.progress = 0.;
@@ -171,7 +184,46 @@ impl YtGUI {
                     return;
                 }
                 self.ui_message = String::from("Finished!");
+                self.log_download();
             }
+        }
+    }
+    fn log_download(&self) {
+        let downloads_log_path = dirs::config_dir()
+            .expect("config directory")
+            .join("ytdlp-gui/downloads.log");
+
+        let mut file = OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(downloads_log_path)
+            .expect("downloads logs file");
+
+        // [<date-time>]::<URL>::<options>::<download-path>
+        if let Err(e) = writeln!(
+            file,
+            "{}::{}::{}::{}",
+            Local::now(),
+            self.download_link,
+            if self.active_tab == 1 {
+                format!(
+                    "{:?}:{:?}",
+                    self.config.options.video_resolution, self.config.options.video_format
+                )
+            } else {
+                format!(
+                    "{:?}:{:?}",
+                    self.config.options.audio_quality, self.config.options.audio_format
+                )
+            },
+            self.config
+                .download_folder
+                .clone()
+                .unwrap_or_else(|| "~/Videos".into())
+                .to_str()
+                .expect("path to string"),
+        ) {
+            error!("{e}");
         }
     }
 }
@@ -183,8 +235,8 @@ impl Application for YtGUI {
     type Theme = theme::Theme;
 
     fn new(flags: Self::Flags) -> (Self, iced::Command<Message>) {
-        env_logger::init();
         info!("{flags:#?}");
+
         (
             Self {
                 download_link: String::default(),
@@ -296,9 +348,6 @@ impl Application for YtGUI {
                     if self.command.kill().is_ok() {
                         info!("killed child process");
                     }
-                    self.config
-                        .update_config_file()
-                        .expect("update config file");
                     return iced::Command::single(iced_native::command::Action::Window(
                         iced_native::window::Action::Close,
                     ));
@@ -397,4 +446,32 @@ impl Application for YtGUI {
         let iced_events = subscription::events().map(Message::IcedEvent);
         Subscription::batch(vec![bind(), iced_events])
     }
+}
+
+pub fn setup_logger() {
+    let stderr = ConsoleAppender::builder().target(Target::Stderr).build();
+
+    let temporary_dir = std::env::temp_dir();
+
+    let logfile = FileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new("{d} - {m}{n}")))
+        .build(temporary_dir.join("ytdlp-gui.log"))
+        .expect("file appender");
+
+    let config = log4rs::config::Config::builder()
+        .appender(Appender::builder().build("logfile", Box::new(logfile)))
+        .appender(
+            Appender::builder()
+                .filter(Box::new(ThresholdFilter::new(LevelFilter::Info)))
+                .build("stderr", Box::new(stderr)),
+        )
+        .build(
+            Root::builder()
+                .appender("logfile")
+                .appender("stderr")
+                .build(LevelFilter::Trace),
+        )
+        .expect("logger config");
+
+    log4rs::init_config(config).unwrap();
 }
