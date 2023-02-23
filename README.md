@@ -42,7 +42,7 @@ the default file looks like this:
 
 ```toml
 # Optional
-# This is the directory of the bin, not the bin path
+# This is the directory of the bin, not the bin itself
 bin_path = "<some_cool_path>" # if not set the command will be `yt-dlp <app_args>`
 
 # Optional
