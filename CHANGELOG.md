@@ -1,6 +1,6 @@
 # Changelog
 
-## unversioned
+## Unversioned
 
 - Major: Added general logs to stderr and a temporary file in temp directory
 - Major: Added Download logs
