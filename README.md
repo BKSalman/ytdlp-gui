@@ -56,3 +56,10 @@ video_format = "Mp4" # options: "Mp4" "Mkv" "Webm"
 audio_quality = "Good" # options: "Best" "Good" "Medium" "Low"
 audio_format = "Mp3" #  options: "Mp3" "Wav" "Vorbis" "M4a" "Opus"
 ```
+
+# Contribution
+All contribution forms are welcomed, whether it's Pull requests, Issues (bug reports/enhancement requests)
+
+However, I might not be quick to reply to them, or implement the requested stuff, since I'm focusing on other things
+
+But I will do my best 👍
