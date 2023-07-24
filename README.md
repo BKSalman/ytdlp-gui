@@ -21,10 +21,11 @@ Available in the AUR [ytdlp-gui](https://aur.archlinux.org/packages/ytdlp-gui)
 ### other distributions
 
 #### 1- download ``yt-dlp``
+either
 
-a- from your distribution repo
+&nbsp; &nbsp; &nbsp; a- from your distribution repo
 
-b- or download the [binary](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp) then move it to your bin directory and make it an executable
+&nbsp; &nbsp; &nbsp; b- or download the [binary](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp), then move it to your bin directory, and make it an executable by running `chmod +x <bin_file>`
 
 #### 2- download ``ffmpeg`` or ``ffmpeg-free`` from your distribution repos
 
