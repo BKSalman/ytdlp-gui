@@ -45,6 +45,7 @@ const SPACING: u16 = 10;
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    None,
     InputChanged(String),
     TogglePlaylist(bool),
     SelectedVideoFormat(VideoFormat),
@@ -336,6 +337,7 @@ impl Application for YtGUI {
                         String::from("Playlist box needs to be checked to download a playlist");
                     return iced::Command::none();
                 }
+
                 info!("{progress}");
             }
             Message::Ready(sender) => {
@@ -353,6 +355,7 @@ impl Application for YtGUI {
                     ));
                 }
             }
+            Message::None => {}
         }
 
         iced::Command::none()
@@ -362,7 +365,8 @@ impl Application for YtGUI {
         let content: widgets::Element<Message> = column![
             row![
                 text("Enter URL: "),
-                text_input("Download link", &self.download_link, Message::InputChanged,)
+                text_input("Download link", &self.download_link)
+                    .on_input(Message::InputChanged)
                     .size(FONT_SIZE)
                     .width(Length::Fill),
                 checkbox("Playlist", self.is_playlist, Message::TogglePlaylist)
@@ -386,10 +390,9 @@ impl Application for YtGUI {
                     ],
                 )
                 .height(Length::Shrink)
-                .width(Length::Units(1))
-                .tab_bar_width(Length::Units(1)),
+                .width(Length::FillPortion(1))
+                .tab_bar_width(Length::FillPortion(1)),
             row![
-                button("Browse").on_press(Message::SelectFolder),
                 text_input(
                     "",
                     self.config
@@ -397,18 +400,21 @@ impl Application for YtGUI {
                         .clone()
                         .unwrap_or_else(|| "~/Videos".into())
                         .to_str()
-                        .unwrap(),
-                    Message::SelectFolderTextInput,
-                ),
+                        .unwrap()
+                )
+                .on_input(Message::SelectFolderTextInput),
+                button("Browse").on_press(Message::SelectFolder),
+            ]
+            .spacing(SPACING)
+            .align_items(iced::Alignment::Center),
+            row![
                 button(text("Download")).on_press(Message::Command(command::Message::Run(
                     self.download_link.clone(),
                 ))),
             ]
-            .spacing(SPACING)
-            .align_items(iced::Alignment::Center),
         ]
         .width(Length::Fill)
-        .align_items(iced::Alignment::Fill)
+        .align_items(iced::Alignment::Center)
         .spacing(20)
         .padding(20)
         .into();
@@ -427,8 +433,8 @@ impl Application for YtGUI {
                 .align_items(iced::Alignment::Center),
             )
             .width(Length::Fill)
-            .max_height(70)
-            .max_width(300)
+            .max_height(70.)
+            .max_width(300.)
             .on_close(Message::Command(command::Message::Stop))
             .into()
         });

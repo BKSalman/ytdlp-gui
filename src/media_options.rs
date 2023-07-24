@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
-use iced::widget::{radio, row, text};
+use iced::widget::{pick_list, row, text};
 use serde::{Deserialize, Serialize};
-use strum::Display;
 
 use crate::{widgets, Message, FONT_SIZE, SPACING};
 
@@ -24,6 +23,18 @@ pub enum VideoResolution {
     Sd,
 }
 
+impl core::fmt::Display for VideoResolution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VideoResolution::FourK => write!(f, "4K"),
+            VideoResolution::TwoK => write!(f, "1440p"),
+            VideoResolution::FullHD => write!(f, "1080p"),
+            VideoResolution::Hd => write!(f, "720p"),
+            VideoResolution::Sd => write!(f, "480p"),
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum VideoFormat {
     #[default]
@@ -33,7 +44,17 @@ pub enum VideoFormat {
     // Flv,
 }
 
-#[derive(Deserialize, Serialize, Display, Default, Debug, Copy, Clone, PartialEq, Eq)]
+impl core::fmt::Display for VideoFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VideoFormat::Mp4 => write!(f, "MP4"),
+            VideoFormat::Mkv => write!(f, "MKV"),
+            VideoFormat::Webm => write!(f, "WEBM"),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum AudioQuality {
     Best,
     #[default]
@@ -42,7 +63,18 @@ pub enum AudioQuality {
     Low,
 }
 
-#[derive(Deserialize, Serialize, Display, Default, Debug, Copy, Clone, PartialEq, Eq)]
+impl core::fmt::Display for AudioQuality {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AudioQuality::Best => write!(f, "Best"),
+            AudioQuality::Good => write!(f, "Good"),
+            AudioQuality::Medium => write!(f, "Medium"),
+            AudioQuality::Low => write!(f, "Low"),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum AudioFormat {
     #[default]
     Mp3,
@@ -50,6 +82,18 @@ pub enum AudioFormat {
     Vorbis,
     M4a,
     Opus,
+}
+
+impl core::fmt::Display for AudioFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AudioFormat::Mp3 => write!(f, "MP3"),
+            AudioFormat::Wav => write!(f, "WAV"),
+            AudioFormat::Vorbis => write!(f, "VORBIS"),
+            AudioFormat::M4a => write!(f, "M4A"),
+            AudioFormat::Opus => write!(f, "OPUS"),
+        }
+    }
 }
 
 impl VideoResolution {
@@ -75,14 +119,6 @@ impl VideoFormat {
 }
 
 impl AudioFormat {
-    const ALL: [AudioFormat; 5] = [
-        AudioFormat::Mp3,
-        AudioFormat::Wav,
-        AudioFormat::Vorbis,
-        AudioFormat::Opus,
-        AudioFormat::M4a,
-    ];
-
     pub fn options(&self) -> String {
         match self {
             AudioFormat::Mp3 => String::from("mp3"),
@@ -95,13 +131,6 @@ impl AudioFormat {
 }
 
 impl AudioQuality {
-    const ALL: [AudioQuality; 4] = [
-        AudioQuality::Best,
-        AudioQuality::Good,
-        AudioQuality::Medium,
-        AudioQuality::Low,
-    ];
-
     pub fn options(&self) -> String {
         match self {
             AudioQuality::Best => String::from("0"),
@@ -112,51 +141,21 @@ impl AudioQuality {
     }
 }
 
-const RADIO_DOT_SIZE: u16 = 15;
-
 impl Options {
     pub fn video_resolutions(resolution: VideoResolution) -> widgets::Row<'static, Message> {
         row![
             text("Resolution: ").size(FONT_SIZE),
-            radio(
-                "4K",
-                VideoResolution::FourK,
+            pick_list(
+                vec![
+                    VideoResolution::FourK,
+                    VideoResolution::TwoK,
+                    VideoResolution::FullHD,
+                    VideoResolution::Hd,
+                    VideoResolution::Sd
+                ],
                 Some(resolution),
-                Message::SelectedResolution,
+                Message::SelectedResolution
             )
-            .size(RADIO_DOT_SIZE)
-            .text_size(FONT_SIZE),
-            radio(
-                "1440p",
-                VideoResolution::TwoK,
-                Some(resolution),
-                Message::SelectedResolution,
-            )
-            .size(RADIO_DOT_SIZE)
-            .text_size(FONT_SIZE),
-            radio(
-                "1080p",
-                VideoResolution::FullHD,
-                Some(resolution),
-                Message::SelectedResolution,
-            )
-            .size(RADIO_DOT_SIZE)
-            .text_size(FONT_SIZE),
-            radio(
-                "720p",
-                VideoResolution::Hd,
-                Some(resolution),
-                Message::SelectedResolution,
-            )
-            .size(RADIO_DOT_SIZE)
-            .text_size(FONT_SIZE),
-            radio(
-                "480p",
-                VideoResolution::Sd,
-                Some(resolution),
-                Message::SelectedResolution,
-            )
-            .size(RADIO_DOT_SIZE)
             .text_size(FONT_SIZE),
         ]
         .spacing(SPACING)
@@ -168,31 +167,14 @@ impl Options {
     pub fn video_formats(format: VideoFormat) -> widgets::Row<'static, Message> {
         row![
             text("Preferred Format: ").size(FONT_SIZE),
-            radio(
-                "MP4",
-                VideoFormat::Mp4,
+            pick_list(
+                vec![VideoFormat::Mp4, VideoFormat::Mkv, VideoFormat::Webm],
                 Some(format),
-                Message::SelectedVideoFormat,
+                Message::SelectedVideoFormat
             )
-            .size(RADIO_DOT_SIZE)
-            .text_size(FONT_SIZE),
-            radio(
-                "WEBM",
-                VideoFormat::Webm,
-                Some(format),
-                Message::SelectedVideoFormat,
-            )
-            .size(RADIO_DOT_SIZE)
-            .text_size(FONT_SIZE),
-            radio(
-                "MKV",
-                VideoFormat::Mkv,
-                Some(format),
-                Message::SelectedVideoFormat,
-            )
-            .size(RADIO_DOT_SIZE)
             .text_size(FONT_SIZE),
         ]
+        .width(iced::Length::Fill)
         .spacing(SPACING)
         .align_items(iced::Alignment::Center)
         .padding(12)
@@ -201,23 +183,20 @@ impl Options {
     pub fn audio_formats(format: AudioFormat) -> widgets::Row<'static, Message> {
         row![
             text("Preferred Format: ").size(FONT_SIZE),
-            AudioFormat::ALL
-                .iter()
-                .cloned()
-                .fold(row![], |row, audio_format| {
-                    row.push(
-                        radio(
-                            audio_format.to_string().to_ascii_uppercase(),
-                            audio_format,
-                            Some(format),
-                            Message::SelectedAudioFormat,
-                        )
-                        .size(RADIO_DOT_SIZE)
-                        .text_size(FONT_SIZE),
-                    )
-                    .spacing(SPACING)
-                }),
+            pick_list(
+                vec![
+                    AudioFormat::Mp3,
+                    AudioFormat::Wav,
+                    AudioFormat::Vorbis,
+                    AudioFormat::M4a,
+                    AudioFormat::Opus,
+                ],
+                Some(format),
+                Message::SelectedAudioFormat
+            )
+            .text_size(FONT_SIZE),
         ]
+        .width(iced::Length::Fill)
         .spacing(SPACING)
         .align_items(iced::Alignment::Center)
         .padding(12)
@@ -226,23 +205,19 @@ impl Options {
     pub fn audio_qualities(quality: AudioQuality) -> widgets::Row<'static, Message> {
         row![
             text("Quality: ").size(FONT_SIZE),
-            AudioQuality::ALL
-                .iter()
-                .cloned()
-                .fold(row![], |row, audio_quality| {
-                    row.push(
-                        radio(
-                            audio_quality.to_string(),
-                            audio_quality,
-                            Some(quality),
-                            Message::SelectedAudioQuality,
-                        )
-                        .size(RADIO_DOT_SIZE)
-                        .text_size(FONT_SIZE),
-                    )
-                    .spacing(SPACING)
-                }),
+            pick_list(
+                vec![
+                    AudioQuality::Best,
+                    AudioQuality::Good,
+                    AudioQuality::Medium,
+                    AudioQuality::Low,
+                ],
+                Some(quality),
+                Message::SelectedAudioQuality
+            )
+            .text_size(FONT_SIZE)
         ]
+        .width(iced::Length::Fill)
         .spacing(SPACING)
         .align_items(iced::Alignment::Center)
         .padding(12)
