@@ -298,7 +298,7 @@ impl checkbox::StyleSheet for Theme {
 impl pick_list::StyleSheet for Theme {
     type Style = ();
 
-    fn active(&self, style: &<Self as pick_list::StyleSheet>::Style) -> pick_list::Appearance {
+    fn active(&self, _style: &<Self as pick_list::StyleSheet>::Style) -> pick_list::Appearance {
         pick_list::Appearance {
             text_color: Color::WHITE,
             placeholder_color: PLACEHOLDER,
@@ -322,7 +322,7 @@ impl pick_list::StyleSheet for Theme {
 impl scrollable::StyleSheet for Theme {
     type Style = ();
 
-    fn active(&self, style: &Self::Style) -> scrollable::Scrollbar {
+    fn active(&self, _style: &Self::Style) -> scrollable::Scrollbar {
         scrollable::Scrollbar {
             background: None,
             border_radius: 2.,
@@ -338,12 +338,23 @@ impl scrollable::StyleSheet for Theme {
     }
 
     fn hovered(&self, style: &Self::Style, is_mouse_over_scrollbar: bool) -> scrollable::Scrollbar {
-        scrollable::Scrollbar {
-            scroller: scrollable::Scroller {
-                color: HOVERED,
-                ..self.active(style).scroller
-            },
-            ..self.active(style)
+        if is_mouse_over_scrollbar {
+            scrollable::Scrollbar {
+                scroller: scrollable::Scroller {
+                    color: HOVERED,
+                    border_width: 1.,
+                    ..self.active(style).scroller
+                },
+                ..self.active(style)
+            }
+        } else {
+            scrollable::Scrollbar {
+                scroller: scrollable::Scroller {
+                    color: HOVERED,
+                    ..self.active(style).scroller
+                },
+                ..self.active(style)
+            }
         }
     }
 }
@@ -351,7 +362,7 @@ impl scrollable::StyleSheet for Theme {
 impl menu::StyleSheet for Theme {
     type Style = ();
 
-    fn appearance(&self, style: &Self::Style) -> menu::Appearance {
+    fn appearance(&self, _style: &Self::Style) -> menu::Appearance {
         menu::Appearance {
             text_color: Color::WHITE,
             background: Background::Color(ACCENT),

@@ -400,7 +400,7 @@ impl Application for YtGUI {
                         .clone()
                         .unwrap_or_else(|| "~/Videos".into())
                         .to_str()
-                        .unwrap()
+                        .expect("download folder as str"),
                 )
                 .on_input(Message::SelectFolderTextInput),
                 button("Browse").on_press(Message::SelectFolder),
@@ -408,7 +408,7 @@ impl Application for YtGUI {
             .spacing(SPACING)
             .align_items(iced::Alignment::Center),
             row![
-                button(text("Download")).on_press(Message::Command(command::Message::Run(
+                button("Download").on_press(Message::Command(command::Message::Run(
                     self.download_link.clone(),
                 ))),
             ]
@@ -479,5 +479,5 @@ pub fn setup_logger() {
         )
         .expect("logger config");
 
-    log4rs::init_config(config).unwrap();
+    log4rs::init_config(config).expect("Initialize logging config");
 }
