@@ -2,8 +2,14 @@
 
 ## Unversioned
 
+
+## 0.3.0
+
 - Major: Added general logs to stderr and a temporary file in temp directory
-- Major: Added Download logs
+- Major: Added Download logs after finishing every download
+- Major: Replaced radio buttons with a drop-down menu for selecting resolutions and formats
+- Minor: Moved the download button to the bottom
+- Minor: Moved the "Browse" button to the right of the path text box
 - Minor: Options and settings now save on download instead of saving on app close
 - Dev: Replaced env_logger with log4rs to use it for std logging and file logging
 
