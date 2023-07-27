@@ -33,9 +33,9 @@ fn main() -> iced::Result {
     let config = toml::from_str::<Config>(&config_file).expect("Deserialize config file");
 
     let settings = Settings {
-        id: Some("ytdlp-gui".to_string()),
+        id: Some(String::from("ytdlp-gui")),
         window: window::Settings {
-            size: (600, 275),
+            size: (600, 320),
             resizable: false,
             ..Default::default()
         },

@@ -1,6 +1,10 @@
-use iced::widget::{button, checkbox, container, progress_bar, radio, text, text_input};
+use iced::overlay::menu;
+use iced::widget::{
+    button, checkbox, container, pick_list, progress_bar, radio, scrollable, text, text_input,
+};
 use iced::{application, theme, Color};
 use iced_aw::{modal, style::card, tabs};
+use iced_native::Background;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Theme;
@@ -10,6 +14,14 @@ const SURFACE: Color = Color::from_rgb(
     0x44 as f32 / 255.0,
     0x4B as f32 / 255.0,
 );
+
+const DISABLED: Color = Color::from_rgb(
+    0x30 as f32 / 255.0,
+    0x34 as f32 / 255.0,
+    0x3B as f32 / 255.0,
+);
+
+const PLACEHOLDER: Color = Color::from_rgb(0.4, 0.4, 0.4);
 
 const ACCENT: Color = Color::from_rgb(
     0x6F as f32 / 255.0,
@@ -181,6 +193,7 @@ impl text_input::StyleSheet for Theme {
             border_radius: 2.0,
             border_width: 0.0,
             border_color: Color::TRANSPARENT,
+            icon_color: Color::TRANSPARENT,
         }
     }
 
@@ -193,7 +206,7 @@ impl text_input::StyleSheet for Theme {
     }
 
     fn placeholder_color(&self, _style: &Self::Style) -> Color {
-        Color::from_rgb(0.4, 0.4, 0.4)
+        PLACEHOLDER
     }
 
     fn value_color(&self, _style: &Self::Style) -> Color {
@@ -202,6 +215,16 @@ impl text_input::StyleSheet for Theme {
 
     fn selection_color(&self, _style: &Self::Style) -> Color {
         ACTIVE
+    }
+
+    fn disabled_color(&self, _style: &Self::Style) -> Color {
+        DISABLED
+    }
+
+    fn disabled(&self, style: &Self::Style) -> text_input::Appearance {
+        text_input::Appearance {
+            ..self.active(style)
+        }
     }
 }
 
@@ -252,11 +275,11 @@ impl checkbox::StyleSheet for Theme {
     fn active(&self, _style: &Self::Style, is_checked: bool) -> checkbox::Appearance {
         checkbox::Appearance {
             background: if is_checked { ACTIVE } else { SURFACE }.into(),
-            checkmark_color: Color::WHITE,
             border_radius: 2.0,
             border_width: 1.0,
             border_color: ACTIVE,
             text_color: None,
+            icon_color: Color::WHITE,
         }
     }
 
@@ -268,6 +291,86 @@ impl checkbox::StyleSheet for Theme {
             }
             .into(),
             ..self.active(style, is_checked)
+        }
+    }
+}
+
+impl pick_list::StyleSheet for Theme {
+    type Style = ();
+
+    fn active(&self, _style: &<Self as pick_list::StyleSheet>::Style) -> pick_list::Appearance {
+        pick_list::Appearance {
+            text_color: Color::WHITE,
+            placeholder_color: PLACEHOLDER,
+            handle_color: Color::WHITE,
+            background: Background::Color(SURFACE),
+            border_radius: 2.0,
+            border_width: 0.0,
+            border_color: Color::TRANSPARENT,
+        }
+    }
+
+    fn hovered(&self, style: &<Self as pick_list::StyleSheet>::Style) -> pick_list::Appearance {
+        pick_list::Appearance {
+            border_color: HOVERED,
+            background: Background::Color(HOVERED),
+            ..self.active(style)
+        }
+    }
+}
+
+impl scrollable::StyleSheet for Theme {
+    type Style = ();
+
+    fn active(&self, _style: &Self::Style) -> scrollable::Scrollbar {
+        scrollable::Scrollbar {
+            background: None,
+            border_radius: 2.,
+            border_width: 0.,
+            border_color: Color::TRANSPARENT,
+            scroller: scrollable::Scroller {
+                color: ACCENT,
+                border_radius: 0.,
+                border_width: 0.,
+                border_color: Color::TRANSPARENT,
+            },
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style, is_mouse_over_scrollbar: bool) -> scrollable::Scrollbar {
+        if is_mouse_over_scrollbar {
+            scrollable::Scrollbar {
+                scroller: scrollable::Scroller {
+                    color: HOVERED,
+                    border_width: 1.,
+                    ..self.active(style).scroller
+                },
+                ..self.active(style)
+            }
+        } else {
+            scrollable::Scrollbar {
+                scroller: scrollable::Scroller {
+                    color: HOVERED,
+                    ..self.active(style).scroller
+                },
+                ..self.active(style)
+            }
+        }
+    }
+}
+
+impl menu::StyleSheet for Theme {
+    type Style = ();
+
+    fn appearance(&self, _style: &Self::Style) -> menu::Appearance {
+        menu::Appearance {
+            text_color: Color::WHITE,
+            background: Background::Color(ACCENT),
+            border_width: 0.,
+            border_radius: 0.,
+            border_color: Color::TRANSPARENT,
+            selected_text_color: Color::BLACK,
+            selected_background: Background::Color(ACTIVE),
         }
     }
 }
