@@ -81,6 +81,10 @@
           '';
         };
 
+        overlay = final: prev: {
+          ytdlp-gui = self.packages.${final.system}.ytdlp-gui;
+        };
+
         devShell = mkShell {
           inherit buildInputs nativeBuildInputs;
 
