@@ -11,6 +11,7 @@
   };
 
   outputs = {
+    self,
     nixpkgs,
     flake-utils,
     crane,
@@ -61,28 +62,28 @@
           xorg.libX11
         ];
       in with pkgs; {
-        packages.default = craneLib.buildPackage {
-          src = craneLib.cleanCargoSource (craneLib.path ./.);
+        packages = {
+            ytdlp-gui = craneLib.buildPackage {
+            src = craneLib.cleanCargoSource (craneLib.path ./.);
 
-          inherit buildInputs nativeBuildInputs;
+            inherit buildInputs nativeBuildInputs;
 
-          # idk how to make this work
-          # postInstall = ''
-          #   for _size in "16x16" "32x32" "48x48" "64x64" "128x128" "256x256"; do
-          #       install -Dm644 "$src/data/icons/$_size/apps/ytdlp-gui.png" "$out/share/icons/hicolor/$_size/apps/ytdlp-gui.png"
-          #   done
-          #   install -Dm644 "$src/data/applications/ytdlp-gui.desktop" -t "$out/share/applications/"
-          # '';
+            # idk how to make this work
+            # postInstall = ''
+            #   for _size in "16x16" "32x32" "48x48" "64x64" "128x128" "256x256"; do
+            #       install -Dm644 "$src/data/icons/$_size/apps/ytdlp-gui.png" "$out/share/icons/hicolor/$_size/apps/ytdlp-gui.png"
+            #   done
+            #   install -Dm644 "$src/data/applications/ytdlp-gui.desktop" -t "$out/share/applications/"
+            # '';
 
-          postInstall = ''
-            wrapProgram $out/bin/ytdlp-gui \
-              --prefix PATH : ${lib.makeBinPath [ pkgs.gnome.zenity pkgs.libsForQt5.kdialog]}\
-              --suffix LD_LIBRARY_PATH : ${libPath}
-          '';
-        };
+            postInstall = ''
+              wrapProgram $out/bin/ytdlp-gui \
+                --prefix PATH : ${lib.makeBinPath [ pkgs.gnome.zenity pkgs.libsForQt5.kdialog]}\
+                --suffix LD_LIBRARY_PATH : ${libPath}
+            '';
+          };
 
-        overlay = final: prev: {
-          ytdlp-gui = self.packages.${final.system}.ytdlp-gui;
+          default = ytdlp-gui;
         };
 
         devShell = mkShell {
@@ -94,5 +95,9 @@
           ];
           LD_LIBRARY_PATH = "${libPath}";
         };
-      });
+      }) // {
+        overlay = final: prev: {
+          inherit (self.packages.${final.system}) ytdlp-gui;
+        };
+      };
 }
