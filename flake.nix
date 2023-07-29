@@ -62,21 +62,19 @@
           xorg.libX11
         ];
       in with pkgs; {
-        packages = {
+        packages = rec {
             ytdlp-gui = craneLib.buildPackage {
-            src = craneLib.cleanCargoSource (craneLib.path ./.);
+            src = craneLib.path ./.;
 
             inherit buildInputs nativeBuildInputs;
 
-            # idk how to make this work
-            # postInstall = ''
-            #   for _size in "16x16" "32x32" "48x48" "64x64" "128x128" "256x256"; do
-            #       install -Dm644 "$src/data/icons/$_size/apps/ytdlp-gui.png" "$out/share/icons/hicolor/$_size/apps/ytdlp-gui.png"
-            #   done
-            #   install -Dm644 "$src/data/applications/ytdlp-gui.desktop" -t "$out/share/applications/"
-            # '';
-
             postInstall = ''
+              for _size in "16x16" "32x32" "48x48" "64x64" "128x128" "256x256"; do
+                  echo $src
+                  install -Dm644 "$src/data/icons/$_size/apps/ytdlp-gui.png" "$out/share/icons/hicolor/$_size/apps/ytdlp-gui.png"
+              done
+              install -Dm644 "$src/data/applications/ytdlp-gui.desktop" -t "$out/share/applications/"
+
               wrapProgram $out/bin/ytdlp-gui \
                 --prefix PATH : ${lib.makeBinPath [ pkgs.gnome.zenity pkgs.libsForQt5.kdialog]}\
                 --suffix LD_LIBRARY_PATH : ${libPath}
