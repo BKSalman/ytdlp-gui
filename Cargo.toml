@@ -12,7 +12,6 @@ authors = ["Salman"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.65"
 chrono = "0.4.23"
 dirs = "4.0.0"
 iced = { version = "0.9.0" }
@@ -23,7 +22,6 @@ log4rs = "1.2.0"
 native-dialog = "0.6.3"
 serde = { version = "1.0.152", features = ["derive"] }
 shared_child = "1.0.0"
-strum = { version = "0.24.1", features = ["derive"] }
 toml = "0.5.10"
 
 [package.metadata.generate-rpm]
