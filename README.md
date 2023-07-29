@@ -8,6 +8,37 @@ a GUI for yt-dlp written in Rust
 # Installation
 ## Linux
 
+### NixOS (Flake)
+you can use the flake.nix in the repo
+
+in your `flake.nix`:
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+
+    ytdlp-gui = {
+      url = "github:bksalman/ytdlp-gui";
+    };
+  };
+
+    outputs = { nixpkgs, ytdlp-gui, ...}:
+    let
+      system = "x86_64-linux";
+
+      pkgs = import nixpkgs {
+        inherit system;
+        overlays = [
+          ytdlp-gui.overlay
+        ];
+      };
+    in
+    {
+      ...snip
+```
+
+then you can add it as a normal package, either to your 
+
 ### Fedora
 download the rpm package from the releases page then install it with ``sudo dnf localinstall <rpm_package_name>``
 
