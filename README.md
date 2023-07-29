@@ -40,7 +40,7 @@ in your `flake.nix`:
       ...snip
 ```
 
-then you can add it as a normal package, either to your 
+then you can add it as a normal package, either to your home-manager or nixosConfiguration
 
 ### Fedora
 download the rpm package from the releases page then install it with ``sudo dnf localinstall <rpm_package_name>``
