@@ -1,9 +1,12 @@
 # ytdlp-gui
 a GUI for yt-dlp written in Rust
 
+
 # Preview
-![image](https://user-images.githubusercontent.com/85521119/197349230-dac48be5-d855-4d06-aa7e-d3a762b9efeb.png)
-![image](https://user-images.githubusercontent.com/85521119/197349217-9be1988a-e869-4f85-bc1e-0b4b79253c14.png)
+![2023-07-29_16-52_1](https://github.com/BKSalman/ytdlp-gui/assets/85521119/0703580a-0662-4aad-864e-d3f402d5d3c3)
+![2023-07-29_16-49](https://github.com/BKSalman/ytdlp-gui/assets/85521119/d6e87147-f65c-4b74-ae43-14a6d4b6c1be)
+![2023-07-29_16-52](https://github.com/BKSalman/ytdlp-gui/assets/85521119/832d8ade-5a8a-4876-9a3d-34a43f8574b9)
+
 
 # Installation
 ## Linux
