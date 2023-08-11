@@ -1,4 +1,3 @@
-use log::{debug, error};
 use shared_child::SharedChild;
 use std::{
     io::{self, BufRead, BufReader},
@@ -60,7 +59,7 @@ impl Command {
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped()),
         ) else {
-            error!("Spawning child process failed");
+            tracing::error!("Spawning child process failed");
             *show_modal = true;
             *ui_message = String::from("yt-dlp binary is missing");
             return;
@@ -71,7 +70,7 @@ impl Command {
         let Some(child) = self.shared_child.clone() else {
                         *show_modal = true;
                         *ui_message = String::from("Something went wrong");
-                        error!("No child process");
+                        tracing::error!("No child process");
                         return;
                     };
 
@@ -89,7 +88,7 @@ impl Command {
                 for line in reader.lines().flatten() {
                     sender
                         .unbounded_send(line)
-                        .unwrap_or_else(|e| error!("{e}"));
+                        .unwrap_or_else(|e| tracing::error!("{e}"));
                 }
             });
         }
@@ -116,17 +115,17 @@ impl Command {
                         Ok(str) => {
                             sender
                                 .unbounded_send(str.to_string())
-                                .unwrap_or_else(|e| debug!("{e}"));
+                                .unwrap_or_else(|e| tracing::debug!("{e}"));
                         }
                         Err(err) => {
-                            debug!("{err}");
+                            tracing::debug!("{err}");
                         }
                     }
                     buffer.clear();
                 }
                 sender
                     .unbounded_send(String::from("Finished"))
-                    .unwrap_or_else(|_e| error!("{_e}"));
+                    .unwrap_or_else(|_e| tracing::error!("{_e}"));
             });
         }
     }
