@@ -22,7 +22,7 @@
         craneLib = crane.lib.${system};
         rustOverlay = builtins.fetchTarball {
           url = "https://github.com/oxalica/rust-overlay/archive/master.tar.gz";
-          sha256 = "1jcfh1n57sq3g1mxdf6grqc0rcpams14gbampshfvx0g459b2sj9";
+          sha256 = "1wmp3j8c64zp56byrsc8qvklcy49si5c62vcw4g0nf85v5qbpsna";
         };
         pkgs = import nixpkgs { inherit system; overlays = [ (import rustOverlay) ]; };
         libPath =  with pkgs; lib.makeLibraryPath [

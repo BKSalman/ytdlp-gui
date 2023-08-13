@@ -17,12 +17,13 @@ dirs = "4.0.0"
 iced = { version = "0.9.0" }
 iced_aw = { version = "0.5.0", features = ["tabs", "modal", "card"], default-features = false }
 iced_native = "0.10.0"
-log = "0.4.17"
-log4rs = "1.2.0"
 native-dialog = "0.6.3"
 serde = { version = "1.0.152", features = ["derive"] }
 shared_child = "1.0.0"
 toml = "0.5.10"
+tracing = "0.1.37"
+tracing-appender = "0.2.2"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 
 [package.metadata.generate-rpm]
 assets = [

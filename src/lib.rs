@@ -13,16 +13,8 @@ use iced::{
 use iced_aw::Card;
 use iced_native::subscription;
 
-use log::{error, info, LevelFilter};
-use log4rs::append::console::{ConsoleAppender, Target};
-use log4rs::append::file::FileAppender;
-use log4rs::config::Appender;
-use log4rs::config::Root;
-use log4rs::encode::pattern::PatternEncoder;
-use log4rs::filter::threshold::ThresholdFilter;
 use native_dialog::FileDialog;
 use serde::{Deserialize, Serialize};
-// use theme::widget::Element;
 
 pub mod command;
 pub mod media_options;
@@ -30,6 +22,13 @@ pub mod progress;
 pub mod theme;
 pub mod widgets;
 
+use tracing::metadata::LevelFilter;
+use tracing::Level;
+use tracing_appender::rolling;
+use tracing_subscriber::fmt::writer::MakeWriterExt;
+use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use widgets::{Modal, Tabs};
 
 use crate::media_options::{playlist_options, Options};
@@ -75,7 +74,7 @@ impl Config {
             .expect("config directory")
             .join("ytdlp-gui/config.toml");
         fs::write(config_file, &current_config)?;
-        info!("Updated config file to {}", current_config);
+        tracing::info!("Updated config file to {}", current_config);
         Ok(())
     }
 }
@@ -128,7 +127,7 @@ impl YtGUI {
 
                         args.push(self.config.options.video_format.options().to_string());
 
-                        info!("{args:#?}");
+                        tracing::info!("{args:#?}");
                     }
                     1 => {
                         // Audio tab
@@ -161,10 +160,10 @@ impl YtGUI {
             command::Message::Stop => {
                 match self.command.kill() {
                     Ok(_) => {
-                        info!("killed child process")
+                        tracing::info!("killed child process")
                     }
                     Err(e) => {
-                        error!("{e}")
+                        tracing::error!("{e}")
                     }
                 };
                 self.show_modal = false;
@@ -174,10 +173,10 @@ impl YtGUI {
             command::Message::Finished => {
                 match self.command.kill() {
                     Ok(_) => {
-                        info!("killed child process")
+                        tracing::info!("killed child process")
                     }
                     Err(e) => {
-                        error!("{e}")
+                        tracing::error!("{e}")
                     }
                 };
                 self.progress = 0.;
@@ -190,7 +189,7 @@ impl YtGUI {
         }
     }
     fn log_download(&self) {
-        let downloads_log_path = dirs::config_dir()
+        let downloads_log_path = dirs::cache_dir()
             .expect("config directory")
             .join("ytdlp-gui/downloads.log");
 
@@ -224,7 +223,7 @@ impl YtGUI {
                 .to_str()
                 .expect("path to string"),
         ) {
-            error!("{e}");
+            tracing::error!("{e}");
         }
     }
 }
@@ -236,7 +235,7 @@ impl Application for YtGUI {
     type Theme = theme::Theme;
 
     fn new(flags: Self::Flags) -> (Self, iced::Command<Message>) {
-        info!("{flags:#?}");
+        tracing::info!("config loaded: {flags:#?}");
 
         (
             Self {
@@ -338,7 +337,7 @@ impl Application for YtGUI {
                     return iced::Command::none();
                 }
 
-                info!("{progress}");
+                tracing::info!("{progress}");
             }
             Message::Ready(sender) => {
                 self.sender = Some(sender);
@@ -348,7 +347,7 @@ impl Application for YtGUI {
                     event
                 {
                     if self.command.kill().is_ok() {
-                        info!("killed child process");
+                        tracing::info!("killed child process");
                     }
                     return iced::Command::single(iced_native::command::Action::Window(
                         iced_native::window::Action::Close,
@@ -454,30 +453,45 @@ impl Application for YtGUI {
     }
 }
 
-pub fn setup_logger() {
-    let stderr = ConsoleAppender::builder().target(Target::Stderr).build();
+pub fn logging() {
+    if let Err(_e) = std::env::var("YTG_LOG") {
+        tracing::info!(
+            "no log level specified, defaulting to debug level for ytdlp_gui crate only"
+        );
+        std::env::set_var("YTG_LOG", "none,ytdlp_gui=debug");
+    }
 
-    let temporary_dir = std::env::temp_dir();
+    let logs_dir = dirs::cache_dir()
+        .expect("cache dir should exist")
+        .join("ytdlp-gui/logs");
 
-    let logfile = FileAppender::builder()
-        .encoder(Box::new(PatternEncoder::new("{d} - {m}{n}")))
-        .build(temporary_dir.join("ytdlp-gui.log"))
-        .expect("file appender");
+    // Log all `tracing` events to files prefixed with `debug`. Since these
+    // files will be written to very frequently, roll the log file every minute.
+    let debug_file = rolling::minutely(&logs_dir, "debug");
+    // Log warnings and errors to a separate file. Since we expect these events
+    // to occur less frequently, roll that file on a daily basis instead.
+    let warn_file = rolling::daily(&logs_dir, "warnings");
 
-    let config = log4rs::config::Config::builder()
-        .appender(Appender::builder().build("logfile", Box::new(logfile)))
-        .appender(
-            Appender::builder()
-                .filter(Box::new(ThresholdFilter::new(LevelFilter::Info)))
-                .build("stderr", Box::new(stderr)),
+    tracing_subscriber::registry()
+        .with(
+            EnvFilter::builder()
+                .with_env_var("YTG_LOG")
+                .with_default_directive(LevelFilter::ERROR.into())
+                .from_env_lossy(),
         )
-        .build(
-            Root::builder()
-                .appender("logfile")
-                .appender("stderr")
-                .build(LevelFilter::Trace),
+        .with(
+            tracing_subscriber::fmt::Layer::default()
+                .with_writer(debug_file.with_max_level(Level::DEBUG))
+                .with_ansi(false),
         )
-        .expect("logger config");
-
-    log4rs::init_config(config).expect("Initialize logging config");
+        .with(
+            tracing_subscriber::fmt::Layer::default()
+                .with_writer(warn_file.with_max_level(tracing::Level::WARN))
+                .with_ansi(false),
+        )
+        .with(
+            tracing_subscriber::fmt::Layer::default()
+                .with_writer(std::io::stdout.with_max_level(Level::DEBUG)),
+        )
+        .init();
 }

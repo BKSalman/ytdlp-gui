@@ -3,11 +3,10 @@
 use std::fs;
 
 use iced::{window, Application, Settings};
-use log::warn;
-use ytdlp_gui::{setup_logger, Config, YtGUI};
+use ytdlp_gui::{logging, Config, YtGUI};
 
 fn main() -> iced::Result {
-    setup_logger();
+    logging();
 
     let config_dir = dirs::config_dir()
         .expect("config directory")
@@ -19,7 +18,7 @@ fn main() -> iced::Result {
         Ok(file) => file,
         Err(e) => match e.kind() {
             std::io::ErrorKind::NotFound => {
-                warn!("Config file not found, creating a default config file...");
+                tracing::warn!("Config file not found, creating a default config file...");
                 let new_config = toml::to_string(&Config::default()).expect("Config to string");
                 fs::write(config_dir.join("config.toml"), &new_config)
                     .expect("create new config file");
@@ -30,7 +29,12 @@ fn main() -> iced::Result {
         },
     };
 
-    let config = toml::from_str::<Config>(&config_file).expect("Deserialize config file");
+    let config = toml::from_str::<Config>(&config_file).unwrap_or_else(|e| {
+        tracing::error!("failed to parse config: {e:#?}");
+        let config = Config::default();
+        tracing::warn!("falling back to default configs: {config:#?}");
+        config
+    });
 
     let settings = Settings {
         id: Some(String::from("ytdlp-gui")),

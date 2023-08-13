@@ -2,6 +2,9 @@
 
 ## Unversioned
 
+- Minor: Move downloads logs from `config_dir` to `cache_dir`
+- Minor: Use default configs if config file is broken
+- Dev: Replace log4rs with tracing
 
 ## 0.3.0
 
