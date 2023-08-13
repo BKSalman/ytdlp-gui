@@ -189,7 +189,7 @@ impl YtGUI {
         }
     }
     fn log_download(&self) {
-        let downloads_log_path = dirs::config_dir()
+        let downloads_log_path = dirs::cache_dir()
             .expect("config directory")
             .join("ytdlp-gui/downloads.log");
 
