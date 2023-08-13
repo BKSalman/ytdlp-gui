@@ -29,7 +29,12 @@ fn main() -> iced::Result {
         },
     };
 
-    let config = toml::from_str::<Config>(&config_file).expect("Deserialize config file");
+    let config = toml::from_str::<Config>(&config_file).unwrap_or_else(|e| {
+        tracing::error!("failed to parse config: {e:#?}");
+        let config = Config::default();
+        tracing::warn!("falling back to default configs: {config:#?}");
+        config
+    });
 
     let settings = Settings {
         id: Some(String::from("ytdlp-gui")),
