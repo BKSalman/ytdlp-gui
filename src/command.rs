@@ -136,16 +136,10 @@ impl Command {
                         break;
                     }
 
-                    match std::str::from_utf8(&buffer) {
-                        Ok(str) => {
-                            sender
-                                .unbounded_send(str.to_string())
-                                .unwrap_or_else(|e| tracing::error!("failed to send stdout: {e}"));
-                        }
-                        Err(err) => {
-                            tracing::error!("failed to convert raw yt-dlp stdout to utf8 {err}");
-                        }
-                    }
+                    sender
+                        .unbounded_send(String::from_utf8_lossy(&buffer).to_string())
+                        .unwrap_or_else(|e| tracing::error!("failed to send stdout: {e}"));
+
                     buffer.clear();
                 }
                 // sender
