@@ -213,13 +213,18 @@ impl YtGUI {
                 self.log_download();
             }
             command::Message::Error(e) => {
-                match self.command.kill() {
-                    Ok(_) => tracing::debug!("killed child process"),
-                    Err(err) => tracing::error!("failed to kill child process: {err}"),
-                };
-
                 self.modal_title = String::from("Error");
-                self.modal_body = String::from("Something went wrong, logging...");
+                self.progress = 0.;
+
+                if e.contains("Private video. Sign in if you've been granted access to this video")
+                {
+                    self.modal_body = String::from("Private video, skipping...");
+                } else if e.contains("Video unavailable. This video contains content") {
+                    self.modal_body = String::from("Video unavailable, skipping...");
+                } else {
+                    self.modal_body = String::from("Something went wrong, logging...");
+                }
+
                 tracing::error!("failed to download: {e}");
             }
         }
@@ -386,6 +391,34 @@ impl Application for YtGUI {
                     Some(Progress::PostProcessing { status: _ }) => {
                         self.modal_title = String::from("Processing");
                         self.modal_body = String::from("Processing...");
+                    }
+                    Some(Progress::EndOfPlaylist) => {
+                        match self.command.kill() {
+                            Ok(_) => {
+                                tracing::debug!("killed child process")
+                            }
+                            Err(e) => {
+                                tracing::error!("failed to kill child process {e}")
+                            }
+                        };
+                        self.modal_title = String::from("Done");
+                        self.modal_body = String::from("Finished playlist!");
+                        self.log_download();
+                    }
+                    Some(Progress::EndOfVideo) => {
+                        if !self.is_playlist {
+                            match self.command.kill() {
+                                Ok(_) => {
+                                    tracing::debug!("killed child process")
+                                }
+                                Err(e) => {
+                                    tracing::error!("failed to kill child process {e}")
+                                }
+                            };
+                            self.modal_title = String::from("Done");
+                            self.modal_body = String::from("Finished!");
+                            self.log_download();
+                        }
                     }
                     Some(_) => {}
                     None => {

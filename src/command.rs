@@ -56,10 +56,15 @@ impl Command {
             command.creation_flags(CREATE_NO_WINDOW);
         }
 
-        let print_before_dl = [
+        let print = [
             "--print",
             r#"before_dl:__{"type": "pre_download", "video_id": "%(id)s"}"#,
+            "--print",
+            r#"playlist:__{"type": "end_of_playlist"}"#,
+            "--print",
+            r#"after_video:__{"type": "end_of_video"}"#,
         ];
+
         let progess_template = [
             "--progress-template",
             // format progress as a simple json
@@ -68,7 +73,7 @@ impl Command {
             r#"postprocess:__{"type": "post_processing", "status": "%(progress.status)s"}"#,
         ];
 
-        args.extend_from_slice(&print_before_dl);
+        args.extend_from_slice(&print);
         args.extend_from_slice(&progess_template);
 
         args.push("--no-quiet");
@@ -143,9 +148,9 @@ impl Command {
                     }
                     buffer.clear();
                 }
-                sender
-                    .unbounded_send(String::from("Finished"))
-                    .unwrap_or_else(|e| tracing::error!(r#"failed to send "Finished": {e}"#));
+                // sender
+                //     .unbounded_send(String::from("Finished"))
+                //     .unwrap_or_else(|e| tracing::error!(r#"failed to send "Finished": {e}"#));
             });
         }
     }

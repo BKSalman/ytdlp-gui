@@ -26,28 +26,27 @@ pub fn bind() -> Subscription<Message> {
                     let received = progress_receiver.next().await;
                     if let Some(progress) = received {
                         tracing::debug!("received progress from yt-dlp: {progress}");
-                        if let Some(progress) = progress.strip_prefix("stderr:") {
-                            progress_receiver.close();
-                            return (
-                                Message::Command(command::Message::Error(progress.to_string())),
-                                ProgressState::Starting,
-                            );
-                        } else if progress.contains("has already been downloaded") {
+                        if progress.contains("has already been downloaded") {
                             progress_receiver.close();
                             return (
                                 Message::Command(command::Message::AlreadyExists),
-                                ProgressState::Starting,
-                            );
-                        } else if progress.contains("Finished") {
-                            progress_receiver.close();
-                            return (
-                                Message::Command(command::Message::Finished),
                                 ProgressState::Starting,
                             );
                         } else if progress.contains("entry does not pass filter (!playlist)") {
                             progress_receiver.close();
                             return (
                                 Message::Command(command::Message::PlaylistNotChecked),
+                                ProgressState::Starting,
+                            );
+                        } else if let Some(progress) = progress.strip_prefix("stderr:ERROR") {
+                            return (
+                                Message::Command(command::Message::Error(progress.to_string())),
+                                ProgressState::Ready(progress_receiver),
+                            );
+                        } else if progress.contains("Finished") {
+                            progress_receiver.close();
+                            return (
+                                Message::Command(command::Message::Finished),
                                 ProgressState::Starting,
                             );
                         } else {
@@ -94,7 +93,7 @@ pub enum Progress {
 pub fn parse_progress(input: String) -> Option<Progress> {
     for line in input.lines() {
         if let Some(progress) = line.strip_prefix("__") {
-            let progress = progress.replace(r#""playlist_count": NA"#, r#""#);
+            let progress = progress.replace(r#", "playlist_count": NA, "#, r#""#);
             let progress = progress.replace(r#""playlist_index": NA"#, r#""#);
             let progress = progress.replace("NA", "0");
 
