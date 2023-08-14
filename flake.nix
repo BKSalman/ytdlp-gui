@@ -90,6 +90,7 @@
           packages = with pkgs; [
             rust-bin.stable.latest.default
             rust-analyzer
+            cargo-watch
           ];
           LD_LIBRARY_PATH = "${libPath}";
         };

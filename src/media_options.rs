@@ -119,24 +119,24 @@ impl VideoFormat {
 }
 
 impl AudioFormat {
-    pub fn options(&self) -> String {
+    pub fn options(&self) -> &str {
         match self {
-            AudioFormat::Mp3 => String::from("mp3"),
-            AudioFormat::Wav => String::from("wav"),
-            AudioFormat::Vorbis => String::from("vorbis"),
-            AudioFormat::Opus => String::from("opus"),
-            AudioFormat::M4a => String::from("m4a"),
+            AudioFormat::Mp3 => "mp3",
+            AudioFormat::Wav => "wav",
+            AudioFormat::Vorbis => "vorbis",
+            AudioFormat::Opus => "opus",
+            AudioFormat::M4a => "m4a",
         }
     }
 }
 
 impl AudioQuality {
-    pub fn options(&self) -> String {
+    pub fn options(&self) -> &str {
         match self {
-            AudioQuality::Best => String::from("0"),
-            AudioQuality::Good => String::from("2"),
-            AudioQuality::Medium => String::from("4"),
-            AudioQuality::Low => String::from("6"),
+            AudioQuality::Best => "0",
+            AudioQuality::Good => "2",
+            AudioQuality::Medium => "4",
+            AudioQuality::Low => "6",
         }
     }
 }
@@ -225,34 +225,30 @@ impl Options {
 }
 
 pub fn playlist_options(is_playlist: bool, download_folder: Option<PathBuf>) -> Vec<String> {
-    let mut args = Vec::new();
-    if is_playlist {
-        args.push(String::from("--yes-playlist"));
-        args.push(String::from("-P"));
-        args.push(
-            download_folder
-                .unwrap_or_else(|| "~/Videos".into())
-                .to_str()
-                .expect("directory as str")
-                .to_string(),
-        );
-        args.push(String::from("-o %(playlist)s/%(title)s.%(ext)s"));
-    } else {
-        args.push(String::from("--break-on-reject"));
-        args.push(String::from("--match-filter"));
-        args.push(String::from("!playlist"));
-        args.push(String::from("--no-playlist"));
-        args.push(String::from("-P"));
-        args.push(
-            download_folder
-                .unwrap_or_else(|| "~/Videos".into())
-                .to_str()
-                .expect("download folder as str")
-                .to_string(),
-        );
-        args.push(String::from("-o"));
-        args.push(String::from("%(title)s.%(ext)s"));
-    }
+    let download_dir = download_folder
+        .unwrap_or_else(|| "~/Videos".into())
+        .to_string_lossy()
+        .to_string();
 
-    args
+    if is_playlist {
+        return vec![
+            String::from("--yes-playlist"),
+            String::from("--print"),
+            String::from(r#"playlist:"::end_of_playlist:%(playlist_title)s""#),
+            String::from("-P"),
+            download_dir,
+            String::from("-o %(playlist)s/%(title)s.%(ext)s"),
+        ];
+    } else {
+        return vec![
+            String::from("--break-on-reject"),
+            String::from("--match-filter"),
+            String::from("!playlist"),
+            String::from("--no-playlist"),
+            String::from("-P"),
+            download_dir,
+            String::from("-o"),
+            String::from("%(title)s.%(ext)s"),
+        ];
+    }
 }

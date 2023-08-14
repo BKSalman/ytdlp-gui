@@ -39,7 +39,7 @@ impl Command {
 
     pub fn start(
         &mut self,
-        args: Vec<String>,
+        mut args: Vec<&str>,
         show_modal: &mut bool,
         ui_message: &mut String,
         bin_dir: Option<PathBuf>,
@@ -52,6 +52,23 @@ impl Command {
             use std::os::windows::process::CommandExt;
             command.creation_flags(CREATE_NO_WINDOW);
         }
+
+        let print_before_dl = [
+            "--print",
+            r#"before_dl:__{"type": "pre_download", "video_id": "%(id)s"}"#,
+        ];
+        let progess_template = [
+            "--progress-template",
+            // format progress as a simple json
+            r#"__{"type": "downloading", "video_title": "%(info.title)s", "eta": %(progress.eta)s, "downloaded_bytes": %(progress.downloaded_bytes)s, "total_bytes": %(progress.total_bytes)s, "elapsed": %(progress.elapsed)s, "speed": %(progress.speed)s, "percent_str": "%(progress._percent_str)s"}"#,
+            "--progress-template",
+            r#"postprocess:__{"type": "post_processing", "status": "%(progress.status)s"}"#,
+        ];
+
+        args.extend_from_slice(&print_before_dl);
+        args.extend_from_slice(&progess_template);
+
+        args.push("--progress");
 
         let Ok(shared_child) = SharedChild::spawn(
             command
@@ -101,7 +118,7 @@ impl Command {
             };
             std::thread::spawn(move || {
                 let mut reader = BufReader::new(stdout);
-                let mut buffer: Vec<u8> = Vec::new();
+                let mut buffer = vec![];
                 loop {
                     let Ok(bytes_read) = reader.read_until(b'\r', &mut buffer) else {
                                         panic!("failed to read buffer");
