@@ -233,11 +233,10 @@ pub fn playlist_options(is_playlist: bool, download_folder: Option<PathBuf>) -> 
     if is_playlist {
         return vec![
             String::from("--yes-playlist"),
-            String::from("--print"),
-            String::from(r#"playlist:"::end_of_playlist:%(playlist_title)s""#),
             String::from("-P"),
             download_dir,
-            String::from("-o %(playlist)s/%(title)s.%(ext)s"),
+            String::from("-o"),
+            String::from("%(playlist)s/%(title)s.%(ext)s"),
         ];
     } else {
         return vec![

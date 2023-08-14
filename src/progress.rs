@@ -43,12 +43,6 @@ pub fn bind() -> Subscription<Message> {
                                 Message::Command(command::Message::Error(progress.to_string())),
                                 ProgressState::Ready(progress_receiver),
                             );
-                        } else if progress.contains("Finished") {
-                            progress_receiver.close();
-                            return (
-                                Message::Command(command::Message::Finished),
-                                ProgressState::Starting,
-                            );
                         } else {
                             return (
                                 Message::ProgressEvent(progress),
@@ -90,8 +84,8 @@ pub enum Progress {
     Error(String),
 }
 
-pub fn parse_progress(input: String) -> Option<Progress> {
-    for line in input.lines() {
+pub fn parse_progress(input: String) -> Vec<Progress> {
+    input.lines().map(|line| {
         if let Some(progress) = line.strip_prefix("__") {
             let progress = progress.replace(r#", "playlist_count": NA, "#, r#""#);
             let progress = progress.replace(r#""playlist_index": NA"#, r#""#);
@@ -105,8 +99,8 @@ pub fn parse_progress(input: String) -> Option<Progress> {
                     panic!("failed to parse yt-dlp progress");
                 }),
             );
+        } else {
+            None
         }
-    }
-
-    None
+    }).flatten().collect::<Vec<Progress>>()
 }

@@ -29,6 +29,7 @@ use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
+use url::Url;
 use widgets::{Modal, Tabs};
 
 use crate::media_options::{playlist_options, Options};
@@ -104,6 +105,7 @@ impl YtGUI {
                     self.modal_body = String::from("invalid URL");
                     return;
                 }
+
                 self.config
                     .update_config_file()
                     .expect("update config file");
@@ -112,8 +114,8 @@ impl YtGUI {
 
                 if link.is_empty() {
                     self.show_modal = true;
-                    self.modal_body = String::from("No Download link was provided!");
                     self.modal_title = String::from("Error");
+                    self.modal_body = String::from("No Download link was provided!");
                     return;
                 }
 
@@ -225,8 +227,11 @@ impl YtGUI {
                 if e.contains("Private video. Sign in if you've been granted access to this video")
                 {
                     self.modal_body = String::from("Private video, skipping...");
-                } else if e.contains("Video unavailable. This video contains content") {
+                } else if e.contains("Video unavailable. This video contains content") ||
+                    e.contains("Video unavailable. This video is no longer available because the YouTube account associated with this video has been terminated.") {
                     self.modal_body = String::from("Video unavailable, skipping...");
+                } else if e.contains("YouTube said: The playlist does not exist.") {
+                    self.modal_body = String::from("Playlist does not exist");
                 } else {
                     self.modal_body = String::from("Something went wrong, logging...");
                 }
@@ -352,67 +357,55 @@ impl Application for YtGUI {
                 self.config.options.audio_quality = quality;
             }
             Message::ProgressEvent(progress) => {
-                match parse_progress(progress.clone()) {
-                    Some(Progress::Downloading {
-                        video_title: _,
-                        eta,
-                        downloaded_bytes,
-                        total_bytes,
-                        elapsed: _,
-                        speed,
-                        playlist_count,
-                        playlist_index,
-                    }) => {
-                        self.progress = (downloaded_bytes / total_bytes) * 100.;
-                        if let Some((playlist_count, playlist_index)) =
-                            playlist_count.zip(playlist_index)
-                        {
-                            self.modal_title =
-                                format!("Downloading {} - {}", playlist_index, playlist_count);
-                        } else {
-                            self.modal_title = String::from("Downloading");
+                for progress in parse_progress(progress.clone()) {
+                    match progress {
+                        Progress::Downloading {
+                            video_title: _,
+                            eta,
+                            downloaded_bytes,
+                            total_bytes,
+                            elapsed: _,
+                            speed,
+                            playlist_count,
+                            playlist_index,
+                        } => {
+                            self.progress = (downloaded_bytes / total_bytes) * 100.;
+                            if let Some((playlist_count, playlist_index)) =
+                                playlist_count.zip(playlist_index)
+                            {
+                                self.modal_title =
+                                    format!("Downloading {} - {}", playlist_index, playlist_count);
+                            } else {
+                                self.modal_title = String::from("Downloading");
+                            }
+
+                            let eta = chrono::Duration::seconds(eta.into());
+
+                            let downloaded_megabytes = downloaded_bytes / 1024_f32.powi(2);
+                            let total_downloaded = if downloaded_megabytes > 1024. {
+                                format!("{:.2}GB", downloaded_megabytes / 1024.)
+                            } else {
+                                format!("{:.2}MB", downloaded_megabytes)
+                            };
+
+                            self.modal_body = format!(
+                                "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins}:{eta_secs}",
+                                speed = speed / 1024_f32.powi(2),
+                                // percent = if self.progress.is_infinite() {
+                                //     100.
+                                // } else {
+                                //     self.progress
+                                // },
+                                eta_mins = eta.num_minutes(),
+                                eta_secs = eta.num_seconds() - (eta.num_minutes() * 60),
+                            );
                         }
-
-                        let eta = chrono::Duration::seconds(eta.into());
-
-                        let downloaded_megabytes = downloaded_bytes / 1024_f32.powi(2);
-                        let total_downloaded = if downloaded_megabytes > 1024. {
-                            format!("{:.2}GB", downloaded_megabytes / 1024.)
-                        } else {
-                            format!("{:.2}MB", downloaded_megabytes)
-                        };
-
-                        self.modal_body = format!(
-                            "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins}:{eta_secs}",
-                            speed = speed / 1024_f32.powi(2),
-                            // percent = if self.progress.is_infinite() {
-                            //     100.
-                            // } else {
-                            //     self.progress
-                            // },
-                            eta_mins = eta.num_minutes(),
-                            eta_secs = eta.num_seconds() - (eta.num_minutes() * 60),
-                        );
-                    }
-                    Some(Progress::PostProcessing { status: _ }) => {
-                        self.modal_title = String::from("Processing");
-                        self.modal_body = String::from("Processing...");
-                    }
-                    Some(Progress::EndOfPlaylist) => {
-                        match self.command.kill() {
-                            Ok(_) => {
-                                tracing::debug!("killed child process")
-                            }
-                            Err(e) => {
-                                tracing::error!("failed to kill child process {e}")
-                            }
-                        };
-                        self.modal_title = String::from("Done");
-                        self.modal_body = String::from("Finished playlist!");
-                        self.log_download();
-                    }
-                    Some(Progress::EndOfVideo) => {
-                        if !self.is_playlist {
+                        Progress::PostProcessing { status: _ } => {
+                            self.modal_title = String::from("Processing");
+                            self.modal_body = String::from("Processing...");
+                        }
+                        Progress::EndOfPlaylist => {
+                            println!("end of playlist");
                             match self.command.kill() {
                                 Ok(_) => {
                                     tracing::debug!("killed child process")
@@ -421,18 +414,28 @@ impl Application for YtGUI {
                                     tracing::error!("failed to kill child process {e}")
                                 }
                             };
+                            self.progress = 0.;
                             self.modal_title = String::from("Done");
-                            self.modal_body = String::from("Finished!");
+                            self.modal_body = String::from("Finished playlist!");
                             self.log_download();
                         }
-                    }
-                    Some(_) => {}
-                    None => {
-                        if progress.contains("Encountered a video that did not match filter") {
-                            self.modal_body = String::from(
-                                "Playlist box needs to be checked to download a playlist",
-                            );
+                        Progress::EndOfVideo => {
+                            if !self.is_playlist {
+                                match self.command.kill() {
+                                    Ok(_) => {
+                                        tracing::debug!("killed child process")
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("failed to kill child process {e}")
+                                    }
+                                };
+                                self.progress = 0.;
+                                self.modal_title = String::from("Done");
+                                self.modal_body = String::from("Finished!");
+                                self.log_download();
+                            }
                         }
+                        _ => {}
                     }
                 }
 
