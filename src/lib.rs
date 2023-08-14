@@ -86,7 +86,7 @@ pub struct YtGUI {
 
     show_modal: bool,
     active_tab: usize,
-    ui_message: String,
+    modal_body: String,
     modal_title: String,
 
     sender: Option<UnboundedSender<String>>,
@@ -106,7 +106,7 @@ impl YtGUI {
 
                 if link.is_empty() {
                     self.show_modal = true;
-                    self.ui_message = String::from("No Download link was provided!");
+                    self.modal_body = String::from("No Download link was provided!");
                     self.modal_title = String::from("Error");
                     return;
                 }
@@ -155,7 +155,7 @@ impl YtGUI {
                 self.command.start(
                     args,
                     &mut self.show_modal,
-                    &mut self.ui_message,
+                    &mut self.modal_body,
                     self.config.bin_dir.clone(),
                     self.sender.clone(),
                 );
@@ -171,7 +171,7 @@ impl YtGUI {
                 };
                 self.show_modal = false;
                 self.progress = 0.;
-                self.ui_message.clear();
+                self.modal_body.clear();
             }
             command::Message::AlreadyExists => {
                 match self.command.kill() {
@@ -183,7 +183,7 @@ impl YtGUI {
                     }
                 };
                 self.progress = 0.;
-                self.ui_message = String::from("Already exists");
+                self.modal_body = String::from("Already exists");
                 self.modal_title = String::from("Error");
             }
             command::Message::PlaylistNotChecked => {
@@ -196,7 +196,7 @@ impl YtGUI {
                     }
                 };
                 self.progress = 0.;
-                self.ui_message = String::from("Playlist checkbox not checked!");
+                self.modal_body = String::from("Playlist checkbox not checked!");
                 self.modal_title = String::from("Error");
             }
             command::Message::Finished => {
@@ -209,8 +209,18 @@ impl YtGUI {
                     }
                 };
                 self.modal_title = String::from("Done");
-                self.ui_message = String::from("Finished!");
+                self.modal_body = String::from("Finished!");
                 self.log_download();
+            }
+            command::Message::Error(e) => {
+                match self.command.kill() {
+                    Ok(_) => tracing::debug!("killed child process"),
+                    Err(err) => tracing::debug!("failed to kill child process: {err}"),
+                };
+
+                self.modal_title = String::from("Error");
+                self.modal_body = String::from("Something went wrong, logging...");
+                tracing::error!("failed to download: {e}");
             }
         }
     }
@@ -270,7 +280,7 @@ impl Application for YtGUI {
 
                 show_modal: false,
                 active_tab: 0,
-                ui_message: String::default(),
+                modal_body: String::default(),
                 modal_title: String::from("Downloading"),
 
                 sender: None,
@@ -351,27 +361,36 @@ impl Application for YtGUI {
                         } else {
                             self.modal_title = String::from("Downloading");
                         }
+
                         let eta = chrono::Duration::seconds(eta.into());
-                        self.ui_message = format!(
-                            "{:.2}MB/s | {:.2}% | ETA {}:{}",
-                            speed / (1024. * 1024.),
-                            if self.progress.is_infinite() {
-                                100.
-                            } else {
-                                self.progress
-                            },
-                            eta.num_minutes(),
-                            eta.num_seconds() - (eta.num_minutes() * 60),
+
+                        let downloaded_megabytes = downloaded_bytes / 1024_f32.powi(2);
+                        let total_downloaded = if downloaded_megabytes > 1024. {
+                            format!("{:.2}GB", downloaded_megabytes / 1024.)
+                        } else {
+                            format!("{:.2}MB", downloaded_megabytes)
+                        };
+
+                        self.modal_body = format!(
+                            "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins}:{eta_secs}",
+                            speed = speed / 1024_f32.powi(2),
+                            // percent = if self.progress.is_infinite() {
+                            //     100.
+                            // } else {
+                            //     self.progress
+                            // },
+                            eta_mins = eta.num_minutes(),
+                            eta_secs = eta.num_seconds() - (eta.num_minutes() * 60),
                         );
                     }
                     Some(Progress::PostProcessing { status: _ }) => {
                         self.modal_title = String::from("Processing");
-                        self.ui_message = String::from("Processing...");
+                        self.modal_body = String::from("Processing...");
                     }
                     Some(_) => {}
                     None => {
                         if progress.contains("Encountered a video that did not match filter") {
-                            self.ui_message = String::from(
+                            self.modal_body = String::from(
                                 "Playlist box needs to be checked to download a playlist",
                             );
                         }
@@ -379,17 +398,6 @@ impl Application for YtGUI {
                 }
 
                 return iced::Command::none();
-                // if progress.contains("[ExtractAudio]") {
-                //     self.ui_message = String::from("Extracting audio");
-                //     return iced::Command::none();
-                // } else if progress.contains("has already been downloaded") {
-                //     self.ui_message = String::from("Already downloaded");
-                //     return iced::Command::none();
-                // } else if progress.contains("Encountered a video that did not match filter") {
-                //     self.ui_message =
-                //         String::from("Playlist box needs to be checked to download a playlist");
-                //     return iced::Command::none();
-                // }
             }
             Message::Ready(sender) => {
                 self.sender = Some(sender);
@@ -479,7 +487,7 @@ impl Application for YtGUI {
                     .horizontal_alignment(iced::alignment::Horizontal::Center)
                     .vertical_alignment(iced::alignment::Vertical::Center),
                 column![
-                    text(self.ui_message.clone())
+                    text(self.modal_body.clone())
                         .horizontal_alignment(iced::alignment::Horizontal::Center)
                         .height(Length::Fill),
                     row![progress_bar(0.0..=100., self.progress)]

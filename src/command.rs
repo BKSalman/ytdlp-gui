@@ -18,6 +18,7 @@ pub enum Message {
     Finished,
     AlreadyExists,
     PlaylistNotChecked,
+    Error(String),
 }
 
 #[derive(Default)]
@@ -43,7 +44,7 @@ impl Command {
         &mut self,
         mut args: Vec<&str>,
         show_modal: &mut bool,
-        ui_message: &mut String,
+        modal_body: &mut String,
         bin_dir: Option<PathBuf>,
         sender: Option<UnboundedSender<String>>,
     ) {
@@ -80,7 +81,7 @@ impl Command {
         ) else {
             tracing::error!("Spawning child process failed");
             *show_modal = true;
-            *ui_message = String::from("yt-dlp binary is missing");
+            *modal_body = String::from("yt-dlp binary is missing");
             return;
         };
 
@@ -88,25 +89,25 @@ impl Command {
 
         let Some(child) = self.shared_child.clone() else {
                         *show_modal = true;
-                        *ui_message = String::from("Something went wrong");
+                        *modal_body = String::from("Something went wrong");
                         tracing::error!("No child process");
                         return;
                     };
 
         *show_modal = true;
-        *ui_message = String::from("Initializing...");
+        *modal_body = String::from("Initializing...");
 
         if let Some(stderr) = child.take_stderr() {
             let Some(sender) = sender.clone() else {
                 *show_modal = true;
-                *ui_message = String::from("Something went wrong");
+                *modal_body = String::from("Something went wrong");
                 return;
             };
             std::thread::spawn(move || {
                 let reader = BufReader::new(stderr);
                 for line in reader.lines().flatten() {
                     sender
-                        .unbounded_send(line)
+                        .unbounded_send(format!("stderr:{line}"))
                         .unwrap_or_else(|e| tracing::error!("{e}"));
                 }
             });
@@ -115,7 +116,7 @@ impl Command {
         if let Some(stdout) = child.take_stdout() {
             let Some(sender) = sender else {
                 *show_modal = true;
-                *ui_message = String::from("Something went wrong");
+                *modal_body = String::from("Something went wrong");
                 return;
             };
             std::thread::spawn(move || {

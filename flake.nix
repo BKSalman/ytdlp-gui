@@ -92,6 +92,8 @@
               extensions = [ "rust-src" "rust-analyzer" ];
             })
             cargo-watch
+            gnome.zenity
+            libsForQt5.kdialog
           ];
           LD_LIBRARY_PATH = "${libPath}";
         };

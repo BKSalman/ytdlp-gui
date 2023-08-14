@@ -26,7 +26,13 @@ pub fn bind() -> Subscription<Message> {
                     let received = progress_receiver.next().await;
                     if let Some(progress) = received {
                         tracing::debug!("received progress from yt-dlp: {progress}");
-                        if progress.contains("has already been downloaded") {
+                        if let Some(progress) = progress.strip_prefix("stderr:") {
+                            progress_receiver.close();
+                            return (
+                                Message::Command(command::Message::Error(progress.to_string())),
+                                ProgressState::Starting,
+                            );
+                        } else if progress.contains("has already been downloaded") {
                             progress_receiver.close();
                             return (
                                 Message::Command(command::Message::AlreadyExists),
@@ -82,6 +88,7 @@ pub enum Progress {
     PostProcessing {
         status: String,
     },
+    Error(String),
 }
 
 pub fn parse_progress(input: String) -> Option<Progress> {
@@ -94,9 +101,9 @@ pub fn parse_progress(input: String) -> Option<Progress> {
             return Some(
                 serde_json::from_str::<Progress>(&progress).unwrap_or_else(|e| {
                     tracing::error!(
-                        "failed to parse yt-dlp progress: {progress}::{input} -- {e:#?}"
+                        "failed to parse yt-dlp progress: \noriginal-input: {input}\nstripped-input: {progress}\n{e:#?}"
                     );
-                    panic!("failed to parse yt-dlp progress: {progress} -- {e:#?}");
+                    panic!("failed to parse yt-dlp progress");
                 }),
             );
         }
