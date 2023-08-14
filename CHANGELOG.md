@@ -3,10 +3,11 @@
 ## Unversioned
 
 - Major: Better download progress messages (including progress for playlist videos) since there is better yt-dlp parsing
-- Major: Move downloads logs from `config_dir` to `cache_dir`
+- Major: Move downloads logs from `config_dir` to `cache_dir` linux: $XDG_CACHE_HOME or $HOME/.cache -- windows: {FOLDERID_LocalAppData} -- macos: $HOME/Library/Caches
 - Major: Dev: Better yt-dlp parsing
-- Bugfix: use `.to_string_lossy()` for download dir instead of `.to_str()`, that will solve [this issue](https://github.com/BKSalman/ytdlp-gui/issues/12)
+- Bugfix: Use `.to_string_lossy()` for download dir instead of `.to_str()`, that will solve [this issue](https://github.com/BKSalman/ytdlp-gui/issues/12)
 - Minor: Use default configs if config file is broken
+- Minor: Better error messages in general (there were almost none actually)
 - Dev: Replace log4rs with tracing
 
 ## 0.3.0
