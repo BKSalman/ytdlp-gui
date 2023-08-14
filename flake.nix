@@ -88,8 +88,9 @@
           inherit buildInputs nativeBuildInputs;
 
           packages = with pkgs; [
-            rust-bin.stable.latest.default
-            rust-analyzer
+            (rust-bin.stable.latest.default.override {
+              extensions = [ "rust-src" "rust-analyzer" ];
+            })
             cargo-watch
           ];
           LD_LIBRARY_PATH = "${libPath}";

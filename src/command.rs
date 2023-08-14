@@ -16,6 +16,8 @@ pub enum Message {
     Run(String),
     Stop,
     Finished,
+    AlreadyExists,
+    PlaylistNotChecked,
 }
 
 #[derive(Default)]
@@ -60,7 +62,7 @@ impl Command {
         let progess_template = [
             "--progress-template",
             // format progress as a simple json
-            r#"__{"type": "downloading", "video_title": "%(info.title)s", "eta": %(progress.eta)s, "downloaded_bytes": %(progress.downloaded_bytes)s, "total_bytes": %(progress.total_bytes)s, "elapsed": %(progress.elapsed)s, "speed": %(progress.speed)s, "percent_str": "%(progress._percent_str)s"}"#,
+            r#"__{"type": "downloading", "video_title": "%(info.title)s", "eta": %(progress.eta)s, "downloaded_bytes": %(progress.downloaded_bytes)s, "total_bytes": %(progress.total_bytes)s, "elapsed": %(progress.elapsed)s, "speed": %(progress.speed)s, "playlist_count": %(info.playlist_count)s, "playlist_index": %(info.playlist_index)s }"#,
             "--progress-template",
             r#"postprocess:__{"type": "post_processing", "status": "%(progress.status)s"}"#,
         ];
@@ -68,7 +70,7 @@ impl Command {
         args.extend_from_slice(&print_before_dl);
         args.extend_from_slice(&progess_template);
 
-        args.push("--progress");
+        args.push("--no-quiet");
 
         let Ok(shared_child) = SharedChild::spawn(
             command

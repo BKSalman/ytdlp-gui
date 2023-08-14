@@ -87,6 +87,7 @@ pub struct YtGUI {
     show_modal: bool,
     active_tab: usize,
     ui_message: String,
+    modal_title: String,
 
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
@@ -106,6 +107,7 @@ impl YtGUI {
                 if link.is_empty() {
                     self.show_modal = true;
                     self.ui_message = String::from("No Download link was provided!");
+                    self.modal_title = String::from("Error");
                     return;
                 }
 
@@ -148,6 +150,8 @@ impl YtGUI {
                     playlist_options(self.is_playlist, self.config.download_folder.clone());
 
                 args.append(&mut playlist_options.iter().map(|s| &**s).collect());
+
+                self.modal_title = String::from("Initializing");
                 self.command.start(
                     args,
                     &mut self.show_modal,
@@ -169,7 +173,7 @@ impl YtGUI {
                 self.progress = 0.;
                 self.ui_message.clear();
             }
-            command::Message::Finished => {
+            command::Message::AlreadyExists => {
                 match self.command.kill() {
                     Ok(_) => {
                         tracing::debug!("killed child process")
@@ -179,9 +183,32 @@ impl YtGUI {
                     }
                 };
                 self.progress = 0.;
-                if self.ui_message.contains("Already") {
-                    return;
-                }
+                self.ui_message = String::from("Already exists");
+                self.modal_title = String::from("Error");
+            }
+            command::Message::PlaylistNotChecked => {
+                match self.command.kill() {
+                    Ok(_) => {
+                        tracing::debug!("killed child process")
+                    }
+                    Err(e) => {
+                        tracing::error!("{e}")
+                    }
+                };
+                self.progress = 0.;
+                self.ui_message = String::from("Playlist checkbox not checked!");
+                self.modal_title = String::from("Error");
+            }
+            command::Message::Finished => {
+                match self.command.kill() {
+                    Ok(_) => {
+                        tracing::debug!("killed child process")
+                    }
+                    Err(e) => {
+                        tracing::error!("{e}")
+                    }
+                };
+                self.modal_title = String::from("Done");
                 self.ui_message = String::from("Finished!");
                 self.log_download();
             }
@@ -244,6 +271,7 @@ impl Application for YtGUI {
                 show_modal: false,
                 active_tab: 0,
                 ui_message: String::default(),
+                modal_title: String::from("Downloading"),
 
                 sender: None,
                 command: command::Command::default(),
@@ -306,16 +334,35 @@ impl Application for YtGUI {
                 match parse_progress(progress.clone()) {
                     Some(Progress::Downloading {
                         video_title: _,
-                        eta: _,
+                        eta,
                         downloaded_bytes,
                         total_bytes,
                         elapsed: _,
-                        speed: _,
-                        percent_str: _,
+                        speed,
+                        playlist_count,
+                        playlist_index,
                     }) => {
                         self.progress = (downloaded_bytes / total_bytes) * 100.;
-                        self.modal_title = format!("Downloading");
-                        self.ui_message = format!("{:.2}%", self.progress);
+                        if let Some((playlist_count, playlist_index)) =
+                            playlist_count.zip(playlist_index)
+                        {
+                            self.modal_title =
+                                format!("Downloading {} - {}", playlist_index, playlist_count);
+                        } else {
+                            self.modal_title = String::from("Downloading");
+                        }
+                        let eta = chrono::Duration::seconds(eta.into());
+                        self.ui_message = format!(
+                            "{:.2}MB/s | {:.2}% | ETA {}:{}",
+                            speed / (1024. * 1024.),
+                            if self.progress.is_infinite() {
+                                100.
+                            } else {
+                                self.progress
+                            },
+                            eta.num_minutes(),
+                            eta.num_seconds() - (eta.num_minutes() * 60),
+                        );
                     }
                     Some(Progress::PostProcessing { status: _ }) => {
                         self.modal_title = String::from("Processing");
@@ -323,12 +370,7 @@ impl Application for YtGUI {
                     }
                     Some(_) => {}
                     None => {
-                        if progress.contains("Finished") {
-                            self.ui_message = String::from("Finished");
-                        } else if progress.contains("has already been downloaded") {
-                            self.ui_message = String::from("Already downloaded");
-                        } else if progress.contains("Encountered a video that did not match filter")
-                        {
+                        if progress.contains("Encountered a video that did not match filter") {
                             self.ui_message = String::from(
                                 "Playlist box needs to be checked to download a playlist",
                             );
@@ -433,7 +475,7 @@ impl Application for YtGUI {
 
         let content = Modal::new(self.show_modal, content, || {
             Card::new(
-                text("Downloading")
+                text(&*self.modal_title)
                     .horizontal_alignment(iced::alignment::Horizontal::Center)
                     .vertical_alignment(iced::alignment::Vertical::Center),
                 column![
