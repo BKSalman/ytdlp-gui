@@ -166,7 +166,7 @@ impl YtGUI {
                         tracing::debug!("killed child process")
                     }
                     Err(e) => {
-                        tracing::error!("{e}")
+                        tracing::error!("failed to kill child process {e}")
                     }
                 };
                 self.show_modal = false;
@@ -179,7 +179,7 @@ impl YtGUI {
                         tracing::debug!("killed child process")
                     }
                     Err(e) => {
-                        tracing::error!("{e}")
+                        tracing::error!("failed to kill child process {e}")
                     }
                 };
                 self.progress = 0.;
@@ -192,7 +192,7 @@ impl YtGUI {
                         tracing::debug!("killed child process")
                     }
                     Err(e) => {
-                        tracing::error!("{e}")
+                        tracing::error!("failed to kill child process {e}")
                     }
                 };
                 self.progress = 0.;
@@ -205,7 +205,7 @@ impl YtGUI {
                         tracing::debug!("killed child process")
                     }
                     Err(e) => {
-                        tracing::error!("{e}")
+                        tracing::error!("failed to kill child process {e}")
                     }
                 };
                 self.modal_title = String::from("Done");
@@ -215,7 +215,7 @@ impl YtGUI {
             command::Message::Error(e) => {
                 match self.command.kill() {
                     Ok(_) => tracing::debug!("killed child process"),
-                    Err(err) => tracing::debug!("failed to kill child process: {err}"),
+                    Err(err) => tracing::error!("failed to kill child process: {err}"),
                 };
 
                 self.modal_title = String::from("Error");
@@ -258,7 +258,7 @@ impl YtGUI {
                 .unwrap_or_else(|| "~/Videos".into())
                 .to_string_lossy()
         ) {
-            tracing::error!("{e}");
+            tracing::error!("failed to log download: {e}");
         }
     }
 }

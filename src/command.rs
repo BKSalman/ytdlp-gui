@@ -108,7 +108,7 @@ impl Command {
                 for line in reader.lines().flatten() {
                     sender
                         .unbounded_send(format!("stderr:{line}"))
-                        .unwrap_or_else(|e| tracing::error!("{e}"));
+                        .unwrap_or_else(|e| tracing::error!("failed to send stderr: {e}"));
                 }
             });
         }
@@ -135,17 +135,17 @@ impl Command {
                         Ok(str) => {
                             sender
                                 .unbounded_send(str.to_string())
-                                .unwrap_or_else(|e| tracing::debug!("{e}"));
+                                .unwrap_or_else(|e| tracing::error!("failed to send stdout: {e}"));
                         }
                         Err(err) => {
-                            tracing::debug!("{err}");
+                            tracing::error!("failed to convert raw yt-dlp stdout to utf8 {err}");
                         }
                     }
                     buffer.clear();
                 }
                 sender
                     .unbounded_send(String::from("Finished"))
-                    .unwrap_or_else(|_e| tracing::error!("{_e}"));
+                    .unwrap_or_else(|e| tracing::error!(r#"failed to send "Finished": {e}"#));
             });
         }
     }
