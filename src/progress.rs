@@ -1,5 +1,6 @@
 use iced::futures::{channel::mpsc, StreamExt};
 use iced::{subscription, Subscription};
+use serde::{Deserialize, Serialize};
 
 use crate::{command, Message};
 
@@ -24,17 +25,30 @@ pub fn bind() -> Subscription<Message> {
                 ProgressState::Ready(mut progress_receiver) => {
                     let received = progress_receiver.next().await;
                     if let Some(progress) = received {
-                        if progress.contains("Finished") {
+                        tracing::debug!("received progress from yt-dlp: {progress}");
+                        if progress.contains("has already been downloaded") {
+                            progress_receiver.close();
                             return (
-                                Message::Command(command::Message::Finished),
+                                Message::Command(command::Message::AlreadyExists),
+                                ProgressState::Starting,
+                            );
+                        } else if progress.contains("entry does not pass filter (!playlist)") {
+                            progress_receiver.close();
+                            return (
+                                Message::Command(command::Message::PlaylistNotChecked),
+                                ProgressState::Starting,
+                            );
+                        } else if let Some(progress) = progress.strip_prefix("stderr:ERROR") {
+                            return (
+                                Message::Command(command::Message::Error(progress.to_string())),
+                                ProgressState::Ready(progress_receiver),
+                            );
+                        } else {
+                            return (
+                                Message::ProgressEvent(progress),
                                 ProgressState::Ready(progress_receiver),
                             );
                         }
-
-                        return (
-                            Message::ProgressEvent(progress),
-                            ProgressState::Ready(progress_receiver),
-                        );
                     }
 
                     (Message::None, ProgressState::Ready(progress_receiver))
@@ -42,4 +56,51 @@ pub fn bind() -> Subscription<Message> {
             }
         },
     )
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum Progress {
+    PreProcessing,
+    PreDownload {
+        video_id: String,
+    },
+    Downloading {
+        video_title: String,
+        eta: i32,
+        downloaded_bytes: f32,
+        total_bytes: f32,
+        elapsed: f32,
+        speed: f32,
+        playlist_count: Option<i32>,
+        playlist_index: Option<i32>,
+    },
+    EndOfVideo,
+    EndOfPlaylist,
+    PostProcessing {
+        status: String,
+    },
+    Error(String),
+}
+
+pub fn parse_progress(input: String) -> Vec<Progress> {
+    input.lines().map(|line| {
+        if let Some(progress) = line.strip_prefix("__") {
+            let progress = progress.replace(r#", "playlist_count": NA, "#, r#""#);
+            let progress = progress.replace(r#""playlist_index": NA"#, r#""#);
+            let progress = progress.replace("NA", "0");
+
+            return Some(
+                serde_json::from_str::<Progress>(&progress).unwrap_or_else(|e| {
+                    tracing::error!(
+                        "failed to parse yt-dlp progress: \noriginal-input: {input}\nstripped-input: {progress}\n{e:#?}"
+                    );
+                    panic!("failed to parse yt-dlp progress");
+                }),
+            );
+        } else {
+            None
+        }
+    }).flatten().collect::<Vec<Progress>>()
 }

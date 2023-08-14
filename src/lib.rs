@@ -29,11 +29,12 @@ use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
+use url::Url;
 use widgets::{Modal, Tabs};
 
 use crate::media_options::{playlist_options, Options};
 use crate::media_options::{AudioFormat, AudioQuality, VideoFormat, VideoResolution};
-use crate::progress::bind;
+use crate::progress::{bind, parse_progress, Progress};
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -86,7 +87,8 @@ pub struct YtGUI {
 
     show_modal: bool,
     active_tab: usize,
-    ui_message: String,
+    modal_body: String,
+    modal_title: String,
 
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
@@ -97,35 +99,43 @@ impl YtGUI {
     pub fn command_update(&mut self, message: command::Message) {
         match message {
             command::Message::Run(link) => {
+                if let Err(_) = Url::parse(&link) {
+                    self.show_modal = true;
+                    self.modal_title = String::from("Error");
+                    self.modal_body = String::from("invalid URL");
+                    return;
+                }
+
                 self.config
                     .update_config_file()
                     .expect("update config file");
 
-                let mut args = Vec::new();
+                let mut args: Vec<&str> = Vec::new();
 
                 if link.is_empty() {
                     self.show_modal = true;
-                    self.ui_message = String::from("No Download link was provided!");
+                    self.modal_title = String::from("Error");
+                    self.modal_body = String::from("No Download link was provided!");
                     return;
                 }
 
-                args.push(link);
+                args.push(&link);
 
                 match self.active_tab {
                     0 => {
                         // Video tab
 
-                        args.push(String::from("-S"));
+                        args.push("-S");
 
-                        args.push(self.config.options.video_resolution.options().to_string());
+                        args.push(self.config.options.video_resolution.options());
 
                         // after downloading a video with a specific format
                         // yt-dlp sometimes downloads the audio and video seprately
                         // then merge them in a different format
                         // this enforces the chosen format by the user
-                        args.push(String::from("--remux-video"));
+                        args.push("--remux-video");
 
-                        args.push(self.config.options.video_format.options().to_string());
+                        args.push(self.config.options.video_format.options());
 
                         tracing::info!("{args:#?}");
                     }
@@ -133,26 +143,27 @@ impl YtGUI {
                         // Audio tab
 
                         // Extract audio from Youtube video
-                        args.push(String::from("-x"));
+                        args.push("-x");
 
-                        args.push(String::from("--audio-format"));
+                        args.push("--audio-format");
                         args.push(self.config.options.audio_format.options());
 
-                        args.push(String::from("--audio-quality"));
+                        args.push("--audio-quality");
                         args.push(self.config.options.audio_quality.options());
                     }
                     _ => {}
                 }
 
-                args.append(&mut playlist_options(
-                    self.is_playlist,
-                    self.config.download_folder.clone(),
-                ));
+                let playlist_options =
+                    playlist_options(self.is_playlist, self.config.download_folder.clone());
 
+                args.append(&mut playlist_options.iter().map(|s| &**s).collect());
+
+                self.modal_title = String::from("Initializing");
                 self.command.start(
                     args,
                     &mut self.show_modal,
-                    &mut self.ui_message,
+                    &mut self.modal_body,
                     self.config.bin_dir.clone(),
                     self.sender.clone(),
                 );
@@ -160,31 +171,72 @@ impl YtGUI {
             command::Message::Stop => {
                 match self.command.kill() {
                     Ok(_) => {
-                        tracing::info!("killed child process")
+                        tracing::debug!("killed child process")
                     }
                     Err(e) => {
-                        tracing::error!("{e}")
+                        tracing::error!("failed to kill child process {e}")
                     }
                 };
                 self.show_modal = false;
                 self.progress = 0.;
-                self.ui_message.clear();
+                self.modal_body.clear();
+            }
+            command::Message::AlreadyExists => {
+                match self.command.kill() {
+                    Ok(_) => {
+                        tracing::debug!("killed child process")
+                    }
+                    Err(e) => {
+                        tracing::error!("failed to kill child process {e}")
+                    }
+                };
+                self.progress = 0.;
+                self.modal_body = String::from("Already exists");
+                self.modal_title = String::from("Error");
+            }
+            command::Message::PlaylistNotChecked => {
+                match self.command.kill() {
+                    Ok(_) => {
+                        tracing::debug!("killed child process")
+                    }
+                    Err(e) => {
+                        tracing::error!("failed to kill child process {e}")
+                    }
+                };
+                self.progress = 0.;
+                self.modal_body = String::from("Playlist checkbox not checked!");
+                self.modal_title = String::from("Error");
             }
             command::Message::Finished => {
                 match self.command.kill() {
                     Ok(_) => {
-                        tracing::info!("killed child process")
+                        tracing::debug!("killed child process")
                     }
                     Err(e) => {
-                        tracing::error!("{e}")
+                        tracing::error!("failed to kill child process {e}")
                     }
                 };
-                self.progress = 0.;
-                if self.ui_message.contains("Already") {
-                    return;
-                }
-                self.ui_message = String::from("Finished!");
+                self.modal_title = String::from("Done");
+                self.modal_body = String::from("Finished!");
                 self.log_download();
+            }
+            command::Message::Error(e) => {
+                self.modal_title = String::from("Error");
+                self.progress = 0.;
+
+                if e.contains("Private video. Sign in if you've been granted access to this video")
+                {
+                    self.modal_body = String::from("Private video, skipping...");
+                } else if e.contains("Video unavailable. This video contains content") ||
+                    e.contains("Video unavailable. This video is no longer available because the YouTube account associated with this video has been terminated.") {
+                    self.modal_body = String::from("Video unavailable, skipping...");
+                } else if e.contains("YouTube said: The playlist does not exist.") {
+                    self.modal_body = String::from("Playlist does not exist");
+                } else {
+                    self.modal_body = String::from("Something went wrong, logging...");
+                }
+
+                tracing::error!("failed to download: {e}");
             }
         }
     }
@@ -220,10 +272,9 @@ impl YtGUI {
                 .download_folder
                 .clone()
                 .unwrap_or_else(|| "~/Videos".into())
-                .to_str()
-                .expect("path to string"),
+                .to_string_lossy()
         ) {
-            tracing::error!("{e}");
+            tracing::error!("failed to log download: {e}");
         }
     }
 }
@@ -245,7 +296,8 @@ impl Application for YtGUI {
 
                 show_modal: false,
                 active_tab: 0,
-                ui_message: String::default(),
+                modal_body: String::default(),
+                modal_title: String::from("Downloading"),
 
                 sender: None,
                 command: command::Command::default(),
@@ -279,12 +331,11 @@ impl Application for YtGUI {
             Message::SelectFolder => {
                 if let Ok(Some(path)) = FileDialog::new()
                     .set_location(
-                        self.config
+                        &self
+                            .config
                             .download_folder
                             .clone()
-                            .unwrap_or_else(|| "~/Videos".into())
-                            .to_str()
-                            .expect("download folder as str"),
+                            .unwrap_or_else(|| "~/Videos".into()),
                     )
                     .show_open_single_dir()
                 {
@@ -306,38 +357,89 @@ impl Application for YtGUI {
                 self.config.options.audio_quality = quality;
             }
             Message::ProgressEvent(progress) => {
-                if self.progress == 100. {
-                    self.ui_message = String::from("Processing...");
-                    return iced::Command::none();
-                }
+                for progress in parse_progress(progress.clone()) {
+                    match progress {
+                        Progress::Downloading {
+                            video_title: _,
+                            eta,
+                            downloaded_bytes,
+                            total_bytes,
+                            elapsed: _,
+                            speed,
+                            playlist_count,
+                            playlist_index,
+                        } => {
+                            self.progress = (downloaded_bytes / total_bytes) * 100.;
+                            if let Some((playlist_count, playlist_index)) =
+                                playlist_count.zip(playlist_index)
+                            {
+                                self.modal_title =
+                                    format!("Downloading {} - {}", playlist_index, playlist_count);
+                            } else {
+                                self.modal_title = String::from("Downloading");
+                            }
 
-                if progress.contains('%') {
-                    let words = progress
-                        .split(' ')
-                        .map(String::from)
-                        .filter(|str| str.chars().filter(|char| char.is_numeric()).count() != 0)
-                        .collect::<Vec<String>>();
+                            let eta = chrono::Duration::seconds(eta.into());
 
-                    if let Ok(percentage) = words[0].trim_end_matches('%').parse::<f32>() {
-                        self.progress = percentage;
+                            let downloaded_megabytes = downloaded_bytes / 1024_f32.powi(2);
+                            let total_downloaded = if downloaded_megabytes > 1024. {
+                                format!("{:.2}GB", downloaded_megabytes / 1024.)
+                            } else {
+                                format!("{:.2}MB", downloaded_megabytes)
+                            };
+
+                            self.modal_body = format!(
+                                "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins}:{eta_secs}",
+                                speed = speed / 1024_f32.powi(2),
+                                // percent = if self.progress.is_infinite() {
+                                //     100.
+                                // } else {
+                                //     self.progress
+                                // },
+                                eta_mins = eta.num_minutes(),
+                                eta_secs = eta.num_seconds() - (eta.num_minutes() * 60),
+                            );
+                        }
+                        Progress::PostProcessing { status: _ } => {
+                            self.modal_title = String::from("Processing");
+                            self.modal_body = String::from("Processing...");
+                        }
+                        Progress::EndOfPlaylist => {
+                            println!("end of playlist");
+                            match self.command.kill() {
+                                Ok(_) => {
+                                    tracing::debug!("killed child process")
+                                }
+                                Err(e) => {
+                                    tracing::error!("failed to kill child process {e}")
+                                }
+                            };
+                            self.progress = 0.;
+                            self.modal_title = String::from("Done");
+                            self.modal_body = String::from("Finished playlist!");
+                            self.log_download();
+                        }
+                        Progress::EndOfVideo => {
+                            if !self.is_playlist {
+                                match self.command.kill() {
+                                    Ok(_) => {
+                                        tracing::debug!("killed child process")
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("failed to kill child process {e}")
+                                    }
+                                };
+                                self.progress = 0.;
+                                self.modal_title = String::from("Done");
+                                self.modal_body = String::from("Finished!");
+                                self.log_download();
+                            }
+                        }
+                        _ => {}
                     }
-
-                    self.ui_message = words[1..].join(" | ");
-
-                    return iced::Command::none();
-                } else if progress.contains("[ExtractAudio]") {
-                    self.ui_message = String::from("Extracting audio");
-                    return iced::Command::none();
-                } else if progress.contains("has already been downloaded") {
-                    self.ui_message = String::from("Already downloaded");
-                    return iced::Command::none();
-                } else if progress.contains("Encountered a video that did not match filter") {
-                    self.ui_message =
-                        String::from("Playlist box needs to be checked to download a playlist");
-                    return iced::Command::none();
                 }
 
-                tracing::info!("{progress}");
+                return iced::Command::none();
             }
             Message::Ready(sender) => {
                 self.sender = Some(sender);
@@ -347,7 +449,7 @@ impl Application for YtGUI {
                     event
                 {
                     if self.command.kill().is_ok() {
-                        tracing::info!("killed child process");
+                        tracing::debug!("killed child process");
                     }
                     return iced::Command::single(iced_native::command::Action::Window(
                         iced_native::window::Action::Close,
@@ -366,6 +468,9 @@ impl Application for YtGUI {
                 text("Enter URL: "),
                 text_input("Download link", &self.download_link)
                     .on_input(Message::InputChanged)
+                    .on_submit(Message::Command(command::Message::Run(
+                        self.download_link.clone(),
+                    )))
                     .size(FONT_SIZE)
                     .width(Length::Fill),
                 checkbox("Playlist", self.is_playlist, Message::TogglePlaylist)
@@ -394,12 +499,12 @@ impl Application for YtGUI {
             row![
                 text_input(
                     "",
-                    self.config
+                    &self
+                        .config
                         .download_folder
                         .clone()
                         .unwrap_or_else(|| "~/Videos".into())
-                        .to_str()
-                        .expect("download folder as str"),
+                        .to_string_lossy()
                 )
                 .on_input(Message::SelectFolderTextInput),
                 button("Browse").on_press(Message::SelectFolder),
@@ -420,11 +525,11 @@ impl Application for YtGUI {
 
         let content = Modal::new(self.show_modal, content, || {
             Card::new(
-                text("Downloading")
+                text(&*self.modal_title)
                     .horizontal_alignment(iced::alignment::Horizontal::Center)
                     .vertical_alignment(iced::alignment::Vertical::Center),
                 column![
-                    text(self.ui_message.clone())
+                    text(self.modal_body.clone())
                         .horizontal_alignment(iced::alignment::Horizontal::Center)
                         .height(Length::Fill),
                     row![progress_bar(0.0..=100., self.progress)]

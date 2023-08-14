@@ -2,7 +2,10 @@
 
 ## Unversioned
 
-- Minor: Move downloads logs from `config_dir` to `cache_dir`
+- Major: Better download progress messages (including progress for playlist videos) since there is better yt-dlp parsing
+- Major: Move downloads logs from `config_dir` to `cache_dir`
+- Major: Dev: Better yt-dlp parsing
+- Bugfix: use `.to_string_lossy()` for download dir instead of `.to_str()`, that will solve [this issue](https://github.com/BKSalman/ytdlp-gui/issues/12)
 - Minor: Use default configs if config file is broken
 - Dev: Replace log4rs with tracing
 
