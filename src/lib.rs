@@ -219,8 +219,7 @@ impl YtGUI {
                 .download_folder
                 .clone()
                 .unwrap_or_else(|| "~/Videos".into())
-                .to_str()
-                .expect("path to string"),
+                .to_string_lossy()
         ) {
             tracing::error!("{e}");
         }
@@ -278,12 +277,11 @@ impl Application for YtGUI {
             Message::SelectFolder => {
                 if let Ok(Some(path)) = FileDialog::new()
                     .set_location(
-                        self.config
+                        &self
+                            .config
                             .download_folder
                             .clone()
-                            .unwrap_or_else(|| "~/Videos".into())
-                            .to_str()
-                            .expect("download folder as str"),
+                            .unwrap_or_else(|| "~/Videos".into()),
                     )
                     .show_open_single_dir()
                 {
@@ -409,12 +407,12 @@ impl Application for YtGUI {
             row![
                 text_input(
                     "",
-                    self.config
+                    &self
+                        .config
                         .download_folder
                         .clone()
                         .unwrap_or_else(|| "~/Videos".into())
-                        .to_str()
-                        .expect("download folder as str"),
+                        .to_string_lossy()
                 )
                 .on_input(Message::SelectFolderTextInput),
                 button("Browse").on_press(Message::SelectFolder),
