@@ -1,6 +1,15 @@
 # ytdlp-gui
 a GUI for yt-dlp written in Rust
 
+- [Installation](https://github.com/BKSalman/ytdlp-gui#installation)
+  - [NixOS (Flake)](https://github.com/BKSalman/ytdlp-gui#nixos-flake)
+  - [Fedora](https://github.com/BKSalman/ytdlp-gui#fedora)
+  - [Ubuntu](https://github.com/BKSalman/ytdlp-gui#ubuntu)
+  - [other distributions](https://github.com/BKSalman/ytdlp-gui#other-distributions)
+  - [Windows](https://github.com/BKSalman/ytdlp-gui#windows)
+- [Build from source](https://github.com/BKSalman/ytdlp-gui#build-from-source)
+- [Configuration](https://github.com/BKSalman/ytdlp-gui#configuration)
+- [Contribution](https://github.com/BKSalman/ytdlp-gui#contribution)
 
 # Preview
 ![2023-07-29_16-52_1](https://github.com/BKSalman/ytdlp-gui/assets/85521119/0703580a-0662-4aad-864e-d3f402d5d3c3)
@@ -68,6 +77,35 @@ either
 
 ## Windows
 ##### just download the zip (it's actually tar.gz for now) file from the releases page, extract it in a subfolder and start the ``ytdlp-gui.exe``
+
+# Build from source
+to build from source you need to have `cargo` and `rustc`, you can install them through `rustup` (rust toolchain manager), or from your distrobution repos, whatever you like
+
+after that run the following commands:
+```bash
+# clone the repository to "ytdlp-gui" folder
+git clone https://github.com/BKSalman/ytdlp-gui
+# enter the folder
+cd ytdlp-gui
+# you can either build the project using this
+cargo build
+# or build it in release mode for better performance
+cargo build -r
+```
+then the binary will be either in `<project-root>/target/debug/ytdlp-gui` or `<project-root>/target/release/ytdlp-gui`
+
+and you can either run it directly:
+```bash
+# from project root
+./target/release/ytdlp-gui
+```
+
+or using cargo:
+```bash
+cargo r
+# or for release mode
+cargo r -r
+```
 
 # Configuration
 
