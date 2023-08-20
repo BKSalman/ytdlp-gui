@@ -79,7 +79,7 @@ either
 ##### just download the zip (it's actually tar.gz for now) file from the releases page, extract it in a subfolder and start the ``ytdlp-gui.exe``
 
 # Build from source
-to build from source you need to have `cargo` and `rustc`, you can install them through `rustup` (rust toolchain manager), or from your distrobution repos, whatever you like
+to build from source you need to have `cargo` and `rustc`, you can install them through `rustup` (rust toolchain manager), or from your distribution repos, whatever you like
 
 after that run the following commands:
 ```bash
