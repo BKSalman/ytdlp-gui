@@ -20,7 +20,9 @@ fn main() -> iced::Result {
             std::process::exit(0);
         } else if first_arg == "--version" || first_arg == "-V" {
             let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
+            let git_hash = option_env!("GIT_HASH").unwrap_or("unknown");
             println!("version: {version}");
+            println!("git hash: {git_hash}");
             std::process::exit(0);
         } else {
             println!("Invalid option/argument");
