@@ -7,6 +7,7 @@
 - Major: Dev: Better yt-dlp parsing
 - Bugfix: Use `.to_string_lossy()` for download dir instead of `.to_str()`, that will solve [this issue](https://github.com/BKSalman/ytdlp-gui/issues/12)
 - Minor: Use default configs if config file is broken
+- Minor: Added `--version or -V` and `--help or -h` options to the binary to check the version
 - Minor: Better error messages in general (there were almost none actually)
 - Dev: Replace log4rs with tracing
 
