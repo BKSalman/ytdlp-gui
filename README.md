@@ -67,7 +67,7 @@ either
 #### 3- download the ``ytdlp-gui`` binary from the [realeases page](https://github.com/BKSalman/ytdlp-gui/releases)
 
 ## Windows
-##### just download the zip file from the releases page, extract it in a subfolder and start the ``ytdlp-gui.exe``
+##### just download the zip (it's actually tar.gz for now) file from the releases page, extract it in a subfolder and start the ``ytdlp-gui.exe``
 
 # Configuration
 
