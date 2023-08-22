@@ -61,12 +61,18 @@
           xorg.libXi
           xorg.libX11
         ];
+
+        cargoArtifacts = craneLib.buildDepsOnly ({
+          src = craneLib.cleanCargoSource (craneLib.path ./.);
+          inherit buildInputs nativeBuildInputs;
+          pname = "ytdlp-gui-deps";
+        });
       in with pkgs; {
         packages = rec {
-            ytdlp-gui = craneLib.buildPackage {
+          ytdlp-gui = craneLib.buildPackage {
             src = craneLib.path ./.;
 
-            inherit buildInputs nativeBuildInputs;
+            inherit buildInputs nativeBuildInputs cargoArtifacts;
 
             postInstall = ''
               for _size in "16x16" "32x32" "48x48" "64x64" "128x128" "256x256"; do
@@ -79,6 +85,8 @@
                 --prefix PATH : ${lib.makeBinPath [ pkgs.gnome.zenity pkgs.libsForQt5.kdialog]}\
                 --suffix LD_LIBRARY_PATH : ${libPath}
             '';
+
+            GIT_HASH = self.rev or self.dirtyRev;
           };
 
           default = ytdlp-gui;
