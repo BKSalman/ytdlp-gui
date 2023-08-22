@@ -1,10 +1,9 @@
-use std::process::Command;
-
 fn main() {
-    let output = Command::new("git")
-        .args(&["rev-parse", "HEAD"])
-        .output()
-        .unwrap();
-    let git_hash = String::from_utf8(output.stdout).unwrap();
-    println!("cargo:rustc-env=GIT_HASH={}", git_hash);
+    let repo = gix::discover(".").expect("current directory should be a git repo");
+    let rev = repo
+        .rev_parse_single("HEAD")
+        .expect("HEAD revision should exist");
+    let rev_id = rev.to_string();
+
+    println!("cargo:rustc-env=GIT_HASH={}", rev_id);
 }

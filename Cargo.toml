@@ -27,6 +27,9 @@ tracing-appender = "0.2.2"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 url = "2.4.0"
 
+[build-dependencies]
+gix = { version = "0.51.0", default-features = false }
+
 [package.metadata.generate-rpm]
 assets = [
   { source = "target/release/ytdlp-gui", dest = "/usr/bin/ytdlp-gui", mode = "755" },
