@@ -1,5 +1,6 @@
 fn main() {
-    let repo = gix::discover(".").expect("current directory should be a git repo");
+    let repo = gix::discover(std::env::current_dir().unwrap())
+        .expect("current directory should be a git repo");
     let rev = repo
         .rev_parse_single("HEAD")
         .expect("HEAD revision should exist");
