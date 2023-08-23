@@ -8,17 +8,14 @@ use ytdlp_gui::{logging, Config, YtGUI};
 fn main() -> iced::Result {
     let mut args = std::env::args();
 
-    // don't need first arg (the executable path)
-    args.next();
-
-    if let Some(first_arg) = args.next() {
-        if first_arg == "--help" || first_arg == "-h" {
+    if let Some(arg) = args.nth(1) {
+        if arg == "--help" || arg == "-h" {
             println!("Usage: ytdlp-gui <OPTIONS>\n");
             println!("Options:");
             println!("-h, --help     Print help");
             println!("-V, --version  Print version");
             std::process::exit(0);
-        } else if first_arg == "--version" || first_arg == "-V" {
+        } else if arg == "--version" || arg == "-V" {
             let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
             let git_hash = option_env!("GIT_HASH").unwrap_or("unknown");
             println!("version: {version}");
