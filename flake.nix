@@ -4,6 +4,7 @@
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
     crane = {
       url = "github:ipetkov/crane";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -15,16 +16,13 @@
     nixpkgs,
     flake-utils,
     crane,
+    rust-overlay,
     ...
   }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         craneLib = crane.lib.${system};
-        rustOverlay = builtins.fetchTarball {
-          url = "https://github.com/oxalica/rust-overlay/archive/master.tar.gz";
-          sha256 = "1wmp3j8c64zp56byrsc8qvklcy49si5c62vcw4g0nf85v5qbpsna";
-        };
-        pkgs = import nixpkgs { inherit system; overlays = [ (import rustOverlay) ]; };
+        pkgs = import nixpkgs { inherit system; overlays = [ rust-overlay.overlays.default ]; };
         libPath =  with pkgs; lib.makeLibraryPath [
           libGL
           bzip2
