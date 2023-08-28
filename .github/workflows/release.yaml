@@ -11,8 +11,8 @@ permissions:
   contents: write
 
 jobs:
-  packaging:
-    name: Packaging
+  package-linux:
+    name: Package Linux
     runs-on: ${{ matrix.os }}
     env:
       CARGO_TERM_COLOR: always
@@ -23,7 +23,7 @@ jobs:
         include:
           - build: pinned
             os: ubuntu-20.04
-            rust: 1.69
+            rust: 1.70
           - build: stable
             os: ubuntu-20.04
             rust: stable
@@ -38,7 +38,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
-          targets: x86_64-pc-windows-gnu
 
       - name: Cache
         uses: Swatinem/rust-cache@v2
@@ -49,13 +48,61 @@ jobs:
         run: cargo install cargo-make
 
       - name: Packages script
-        run: cargo make packages_ci
+        run: cargo make package_linux_all
 
       - name: Upload assets to release
         uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "packages/*.rpm,packages/*.deb,packages/ytdlp-gui-windows-64.tar.gz,packages/ytdlp-gui-linux-x64-86"
+          file: "packages/*.rpm,packages/*.deb,packages/ytdlp-gui-linux-x64-86"
+          tags: true
+          draft: true
+
+  package-windows:
+    name: Package windows
+    runs-on: ${{ matrix.os }}
+    env:
+      CARGO_TERM_COLOR: always
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [pinned, stable, nightly]
+        include:
+          - build: pinned
+            os: windows-latest
+            rust: 1.70
+          - build: stable
+            os: windows-latest
+            rust: stable
+          - build: nightly
+            os: windows-latest
+            rust: nightly
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "rust-${{ matrix.build }}-test"
+
+      - name: Install cargo-make
+        run: cargo install cargo-make
+
+      - name: Packages script
+        run: cargo make package_windows
+
+      - name: Upload assets to release
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "packages/ytdlp-gui-windows-64.tar.gz"
           tags: true
           draft: true
