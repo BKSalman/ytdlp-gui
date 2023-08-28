@@ -49,13 +49,13 @@ jobs:
         run: cargo install cargo-make
 
       - name: Packages script
-        run: cargo make packages
+        run: cargo make packages_ci
 
       - name: Upload assets to release
         uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "*.rpm,*.deb,ytdlp-gui-windows-64.tar.gz,ytdlp-gui-linux-x64-86"
+          file: "packages/*.rpm,packages/*.deb,packages/ytdlp-gui-windows-64.tar.gz,packages/ytdlp-gui-linux-x64-86"
           tags: true
           draft: true

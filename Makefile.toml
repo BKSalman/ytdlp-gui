@@ -76,7 +76,7 @@ script = [
   "rm -f windows/ffmpeg-master-latest-win64-gpl.zip",
   "wget --directory-prefix windows https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
   "mv -f -v target/x86_64-pc-windows-gnu/release/ytdlp-gui.exe windows",
-  "tar -cvzf packages/ytdlp-gui-windows-64.tar.gz windows/*"
+  "tar -C windows/ -cvzf packages/ytdlp-gui-windows-64.tar.gz windows/*"
 ]
 
 
