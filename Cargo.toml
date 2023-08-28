@@ -11,6 +11,11 @@ authors = ["Salman"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[workspace]
+members = [
+  "mantask"
+]
+
 [dependencies]
 chrono = "0.4.23"
 dirs = "4.0.0"

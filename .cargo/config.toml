@@ -1,0 +1,2 @@
+[alias]
+mantask = "run -p mantask --"

@@ -8,3 +8,4 @@ aur/*.tar.gz
 aur/src/
 aur/pkg
 result
+mantask/target
