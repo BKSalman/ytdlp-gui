@@ -97,7 +97,7 @@ fn main() -> anyhow::Result<()> {
 fn package_linux() -> anyhow::Result<()> {
     cargo("build")
         .with_arg("--release")
-        .run("Building for linux")?;
+        .run_and_wait("Building for linux")?;
 
     std::fs::copy(
         "target/release/ytdlp-gui",
@@ -114,9 +114,9 @@ fn package_rpm() -> anyhow::Result<()> {
 
     cargo("install")
         .with_args(["--locked", "cargo-generate-rpm"])
-        .run("Installing cargo-generate-rpm")?;
+        .run_and_wait("Installing cargo-generate-rpm")?;
 
-    cargo("generate-rpm").run("Generating RPM package")?;
+    cargo("generate-rpm").run_and_wait("Generating RPM package")?;
 
     for entry in glob::glob("target/generate-rpm/*.rpm").expect("Failed to read glob pattern") {
         let entry = entry?;
@@ -141,9 +141,9 @@ fn package_deb() -> anyhow::Result<()> {
 
     cargo("install")
         .with_arg("cargo-deb")
-        .run("Installing cargo-deb")?;
+        .run_and_wait("Installing cargo-deb")?;
 
-    cargo("deb").run("Generating DEB package")?;
+    cargo("deb").run_and_wait("Generating DEB package")?;
 
     std::fs::create_dir_all("packages")?;
 
@@ -189,7 +189,11 @@ fn package_windows() -> anyhow::Result<()> {
         "windows/ffmpeg.exe",
     )?;
 
+    let _ = std::fs::remove_dir_all("windows/ffmpeg-master-latest-win64-gpl");
+    let _ = std::fs::remove_file("windows/ffmpeg-master-latest-win64-gpl.zip");
+
     println!("Downloading ytdlp");
+
     let ytdlp = minreq::get("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe")
         .send()?
         .into_bytes();
@@ -201,7 +205,7 @@ fn package_windows() -> anyhow::Result<()> {
     {
         cargo("build")
             .with_arg("--release")
-            .run("Building for Windows")?;
+            .run_and_wait("Building for Windows")?;
 
         std::fs::rename("target/release/ytdlp-gui.exe", "windows/ytdlp-gui.exe")?;
     }
@@ -210,7 +214,7 @@ fn package_windows() -> anyhow::Result<()> {
     {
         cargo("build")
             .with_args(["--release", "--target", "x86_64-pc-windows-gnu"])
-            .run("Building for Windows")?;
+            .run_and_wait("Building for Windows")?;
 
         std::fs::rename(
             "target/x86_64-pc-windows-gnu/release/ytdlp-gui.exe",
@@ -219,7 +223,7 @@ fn package_windows() -> anyhow::Result<()> {
     }
 
     println!("Zipping windows package");
-    zip_dir("windows", "ytdlp-gui-windows-64.zip")?;
+    zip_dir("windows", "packages/ytdlp-gui-windows-64.zip")?;
 
     Ok(())
 }
@@ -235,6 +239,7 @@ trait CommandExt {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>;
     fn run(self, msg: &str) -> std::io::Result<std::process::Child>;
+    fn run_and_wait(self, msg: &str) -> std::io::Result<std::process::ExitStatus>;
 }
 
 impl CommandExt for Command {
@@ -258,6 +263,11 @@ impl CommandExt for Command {
         println!("{msg}");
         self.spawn()
     }
+
+    fn run_and_wait(mut self, msg: &str) -> std::io::Result<std::process::ExitStatus> {
+        println!("{msg}");
+        self.spawn()?.wait()
+    }
 }
 
 fn zip_dir(src_dir: &str, dst_file: &str) -> anyhow::Result<()> {
@@ -272,9 +282,7 @@ fn zip_dir(src_dir: &str, dst_file: &str) -> anyhow::Result<()> {
     let it = walkdir.into_iter().filter_map(|e| e.ok());
 
     let mut zip = zip::ZipWriter::new(file);
-    let options = FileOptions::default()
-        .compression_method(zip::CompressionMethod::Zstd)
-        .unix_permissions(0o755);
+    let options = FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
     let mut buffer = Vec::new();
     for entry in it {

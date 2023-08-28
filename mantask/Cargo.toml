@@ -11,4 +11,5 @@ glob = "0.3.1"
 minreq = { version = "2.9.0", features = ["https-rustls"] }
 walkdir = "2.3.3"
 xflags = "0.3.1"
-zip = "0.6.6"
+zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
+

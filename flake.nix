@@ -100,6 +100,7 @@
             cargo-watch
             gnome.zenity
             libsForQt5.kdialog
+            act
           ];
           LD_LIBRARY_PATH = "${libPath}";
         };

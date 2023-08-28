@@ -19,17 +19,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [pinned, stable, nightly]
+        build: [stable]
         include:
-          - build: pinned
-            os: ubuntu-20.04
-            rust: 1.70
           - build: stable
             os: ubuntu-20.04
             rust: stable
-          - build: nightly
-            os: ubuntu-20.04
-            rust: nightly
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -44,18 +38,15 @@ jobs:
         with:
           shared-key: "rust-${{ matrix.build }}-test"
 
-      - name: Install cargo-make
-        run: cargo install cargo-make
-
-      - name: Packages script
-        run: cargo make package_linux_all
+      - name: Package Linux
+        run: cargo mantask package_linux_all
 
       - name: Upload assets to release
         uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "packages/*.rpm,packages/*.deb,packages/ytdlp-gui-linux-x64-86"
+          file: "packages/*.rpm;packages/*.deb;packages/ytdlp-gui-linux-x64-86"
           tags: true
           draft: true
 
@@ -67,17 +58,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [pinned, stable, nightly]
+        build: [stable]
         include:
-          - build: pinned
-            os: windows-latest
-            rust: 1.70
           - build: stable
             os: windows-latest
             rust: stable
-          - build: nightly
-            os: windows-latest
-            rust: nightly
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -92,17 +77,14 @@ jobs:
         with:
           shared-key: "rust-${{ matrix.build }}-test"
 
-      - name: Install cargo-make
-        run: cargo install cargo-make
-
       - name: Packages script
-        run: cargo make package_windows
+        run: cargo mantask package_windows
 
       - name: Upload assets to release
         uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "packages/ytdlp-gui-windows-64.tar.gz"
+          file: "packages/ytdlp-gui-windows-64.zip"
           tags: true
           draft: true
