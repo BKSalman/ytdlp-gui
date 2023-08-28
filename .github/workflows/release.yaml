@@ -1,7 +1,8 @@
 name: publish-release
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "*"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
