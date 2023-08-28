@@ -1,9 +1,10 @@
 let 
-rustOverlay = builtins.fetchTarball {
-          url = "https://github.com/oxalica/rust-overlay/archive/master.tar.gz";
-          sha256 = "04csw82q0y46y3bcpk645cfkid95q6ghnacw8b9x3lmwppwab686";
-        };
-in(import <nixpkgs> {
+  rustOverlay = builtins.fetchTarball {
+            url = "https://github.com/oxalica/rust-overlay/archive/master.tar.gz";
+            sha256 = "04csw82q0y46y3bcpk645cfkid95q6ghnacw8b9x3lmwppwab686";
+          };
+in
+(import <nixpkgs> {
   crossSystem = {
     config = "x86_64-w64-mingw32";
   };

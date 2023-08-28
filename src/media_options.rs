@@ -231,15 +231,15 @@ pub fn playlist_options(is_playlist: bool, download_folder: Option<PathBuf>) -> 
         .to_string();
 
     if is_playlist {
-        return vec![
+        vec![
             String::from("--yes-playlist"),
             String::from("-P"),
             download_dir,
             String::from("-o"),
             String::from("%(playlist)s/%(title)s.%(ext)s"),
-        ];
+        ]
     } else {
-        return vec![
+        vec![
             String::from("--break-on-reject"),
             String::from("--match-filter"),
             String::from("!playlist"),
@@ -248,6 +248,6 @@ pub fn playlist_options(is_playlist: bool, download_folder: Option<PathBuf>) -> 
             download_dir,
             String::from("-o"),
             String::from("%(title)s.%(ext)s"),
-        ];
+        ]
     }
 }

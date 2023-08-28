@@ -34,13 +34,6 @@ install_crate = "cargo-deb"
 command = "cargo"
 args = ["deb"]
 
-[tasks.aur_build]
-description = "Build tarbell and PKGBUILD"
-install_crate = "cargo-aur"
-dependencies = ["linux_build"]
-command = "cargo"
-args = ["aur"]
-
 [tasks.windows_build]
 description = "Build for windows"
 command = "cargo"
@@ -70,15 +63,6 @@ script = [
   "mv -f -v target/generate-rpm/*.rpm packages/"
 ]
 
-[tasks.package_aur]
-description = "Add the rpm package to the packages directory"
-dependencies = ["aur_build"]
-script = [
-  "mkdir -p packages",
-  "mv -f -v PKGBUILD packages/",
-  "mv -f -v *.tar.gz packages/"
-]
-
 [tasks.package_windows]
 description = "Package ffmpeg and yt-dlp and compress it with the app binary for windows"
 dependencies = ["windows_build"]
@@ -97,4 +81,4 @@ script = [
 
 
 [tasks.packages]
-dependencies = ["confirm", "myclean", "package_rpm", "package_deb", "package_aur", "package_linux", "package_windows"]
+dependencies = ["confirm", "myclean", "package_rpm", "package_deb", "package_linux", "package_windows"]

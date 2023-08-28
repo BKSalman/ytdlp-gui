@@ -156,23 +156,13 @@ impl text::StyleSheet for Theme {
 impl radio::StyleSheet for Theme {
     type Style = ();
 
-    fn active(&self, _style: &Self::Style, is_active: bool) -> radio::Appearance {
-        if is_active {
-            radio::Appearance {
-                background: SURFACE.into(),
-                dot_color: ACTIVE,
-                border_width: 1.0,
-                border_color: ACTIVE,
-                text_color: None,
-            }
-        } else {
-            radio::Appearance {
-                background: SURFACE.into(),
-                dot_color: ACTIVE,
-                border_width: 1.0,
-                border_color: ACTIVE,
-                text_color: None,
-            }
+    fn active(&self, _style: &Self::Style, _is_active: bool) -> radio::Appearance {
+        radio::Appearance {
+            background: SURFACE.into(),
+            dot_color: ACTIVE,
+            border_width: 1.0,
+            border_color: ACTIVE,
+            text_color: None,
         }
     }
 

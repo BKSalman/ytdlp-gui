@@ -99,7 +99,7 @@ impl YtGUI {
     pub fn command_update(&mut self, message: command::Message) {
         match message {
             command::Message::Run(link) => {
-                if let Err(_) = Url::parse(&link) {
+                if Url::parse(&link).is_err() {
                     self.show_modal = true;
                     self.modal_title = String::from("Error");
                     self.modal_body = String::from("invalid URL");
