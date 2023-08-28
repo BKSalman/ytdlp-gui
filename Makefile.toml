@@ -82,3 +82,6 @@ script = [
 
 [tasks.packages]
 dependencies = ["confirm", "myclean", "package_rpm", "package_deb", "package_linux", "package_windows"]
+
+[tasks.packages_ci]
+dependencies = ["package_rpm", "package_deb", "package_linux", "package_windows"]

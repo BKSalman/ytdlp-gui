@@ -12,7 +12,7 @@ makedepends=( "cargo" "pkgconf" "git" )
 depends=("ffmpeg" "yt-dlp")
 
 source=("$pkgname-$pkgver.tar.gz::${url}/ytdlp-gui/archive/refs/tags/v${pkgver}.tar.gz")
-sha256sums=("dee55b85f303b10dd9a3d922a9ec757a3b7c6c953da447e7e5effb2857f51d3f")
+sha256sums=("2e02226dbb506dec7cedd7b8991ff9756cdcb18d7f5dcfbbb3f4e522118dafca")
 
 prepare() {
     cd "$pkgname-${pkgver}"
