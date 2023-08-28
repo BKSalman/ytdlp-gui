@@ -3,7 +3,7 @@
 use std::fs;
 
 use iced::{window, Application, Settings};
-use ytdlp_gui::{logging, Config, YtGUI};
+use ytdlp_gui::{git_hash, logging, Config, YtGUI};
 
 fn main() -> iced::Result {
     let mut args = std::env::args();
@@ -17,7 +17,7 @@ fn main() -> iced::Result {
             std::process::exit(0);
         } else if arg == "--version" || arg == "-V" {
             let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
-            let git_hash = option_env!("GIT_HASH").unwrap_or("unknown");
+            let git_hash = git_hash!();
             println!("version: {version}");
             println!("git hash: {git_hash}");
             std::process::exit(0);

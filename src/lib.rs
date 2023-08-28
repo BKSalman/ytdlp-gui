@@ -600,3 +600,20 @@ pub fn logging() {
         )
         .init();
 }
+
+#[macro_export]
+macro_rules! git_hash {
+    () => {
+        match option_env!("GIT_HASH") {
+            Some(hash) => hash.to_string(),
+            None => {
+                let repo = gix::discover(std::env::current_dir().unwrap())
+                    .expect("current directory should be a git repository");
+                let rev = repo
+                    .rev_parse_single("HEAD")
+                    .expect("HEAD in the repository should have a revision id");
+                rev.to_string()
+            }
+        }
+    };
+}

@@ -51,7 +51,7 @@ description = "Add the linux binary to the packages directory"
 dependencies = ["linux_build"]
 script = [
   "mkdir -p packages",
-  "mv -f target/release/ytdlp-gui packages/ytdlp-gui-linux-x64-86"
+  "mv -f -v target/release/ytdlp-gui packages/ytdlp-gui-linux-x64-86"
 ]
 
 [tasks.package_deb]
@@ -59,7 +59,7 @@ description = "Add the deb package to the packages directory"
 dependencies = ["deb_build"]
 script = [
   "mkdir -p packages",
-  "mv -f target/debian/*.deb packages/"
+  "mv -f -v target/debian/*.deb packages/"
 ]
 
 [tasks.package_rpm]
@@ -67,7 +67,7 @@ description = "Add the rpm package to the packages directory"
 dependencies = ["rpm_build"]
 script = [
   "mkdir -p packages",
-  "mv -f target/generate-rpm/*.rpm packages/"
+  "mv -f -v target/generate-rpm/*.rpm packages/"
 ]
 
 [tasks.package_aur]
@@ -75,8 +75,8 @@ description = "Add the rpm package to the packages directory"
 dependencies = ["aur_build"]
 script = [
   "mkdir -p packages",
-  "mv -f PKGBUILD packages/",
-  "mv -f *.tar.gz packages/"
+  "mv -f -v PKGBUILD packages/",
+  "mv -f -v *.tar.gz packages/"
 ]
 
 [tasks.package_windows]
@@ -86,13 +86,13 @@ script = [
   "mkdir -p windows", 
   "mkdir -p packages",
   "wget --directory-prefix windows https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip",
-  "7z x windows/ffmpeg-master-latest-win64-gpl.zip -owindows",
-  "mv windows/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe windows/",
+  "unzip windows/ffmpeg-master-latest-win64-gpl.zip -d windows/",
+  "mv -f -v windows/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe windows/",
   "rm -rf windows/ffmpeg-master-latest-win64-gpl",
   "rm -f windows/ffmpeg-master-latest-win64-gpl.zip",
   "wget --directory-prefix windows https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
-  "mv -f target/x86_64-pc-windows-gnu/release/ytdlp-gui.exe windows",
-  "zip -rj packages/ytdlp-gui-windows-64.zip windows/*"
+  "mv -f -v target/x86_64-pc-windows-gnu/release/ytdlp-gui.exe windows",
+  "tar -cvzf packages/ytdlp-gui-windows-64.tar.gz windows/*"
 ]
 
 
