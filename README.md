@@ -130,6 +130,8 @@ audio_quality = "Good" # options: "Best" "Good" "Medium" "Low"
 audio_format = "Mp3" #  options: "Mp3" "Wav" "Vorbis" "M4a" "Opus"
 ```
 
+### Note: the quality/format options get automatically saved when pressing the download button
+
 # Contribution
 All contribution forms are welcomed, whether it's Pull requests, Issues (bug reports/enhancement requests)
 
