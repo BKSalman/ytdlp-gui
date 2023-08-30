@@ -1,48 +1,23 @@
-use std::ffi::OsStr;
-use std::fmt::Display;
+use anyhow::{anyhow, Context};
+use cargo_metadata::MetadataCommand;
+use sha2::Digest;
 use std::fs::File;
-use std::io::{Read, Write};
-use std::path::Path;
-use std::process::Command;
+use std::io::Write;
 use std::str::FromStr;
+use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
-use anyhow::anyhow;
-use walkdir::WalkDir;
-use zip::write::FileOptions;
+use mantask::{cargo, git, unzip, zip_dir, CommandExt};
 
+#[derive(EnumString, EnumIter, Display, Debug, PartialEq)]
+#[strum(serialize_all = "snake_case")]
 enum Task {
     PackageRPM,
     PackageDEB,
     PackageLinux,
     PackageLinuxAll,
     PackageWindows,
-}
-
-impl FromStr for Task {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "package_linux" => Ok(Self::PackageLinux),
-            "package_rpm" => Ok(Self::PackageRPM),
-            "package_deb" => Ok(Self::PackageDEB),
-            "package_linux_all" => Ok(Self::PackageLinuxAll),
-            "package_windows" => Ok(Self::PackageWindows),
-            _ => Err(anyhow!("Invalid task")),
-        }
-    }
-}
-
-impl Display for Task {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Task::PackageRPM => writeln!(f, "package_rpm"),
-            Task::PackageDEB => writeln!(f, "package_deb"),
-            Task::PackageLinux => writeln!(f, "package_linux"),
-            Task::PackageLinuxAll => writeln!(f, "package_linux_all"),
-            Task::PackageWindows => writeln!(f, "package_windows"),
-        }
-    }
+    PackageAUR,
+    PublishAUR,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -51,6 +26,11 @@ fn main() -> anyhow::Result<()> {
         optional -l,--list
         /// The task to run.
         optional task: String
+
+        /// AUR package commit message.
+        optional -m,--message message: String
+        /// Specify rel for PKGBUILD (only works package_aur task).
+        optional -r,--rel rel: u8
     };
 
     if !flags.list && flags.task.is_none() {
@@ -60,7 +40,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     if let Some(task) = flags.task {
-        let task = Task::from_str(&task)?;
+        let task = Task::from_str(&task).map_err(|_| anyhow!("Invalid task"))?;
 
         std::fs::create_dir_all("packages")?;
 
@@ -74,19 +54,13 @@ fn main() -> anyhow::Result<()> {
                 package_linux()?;
             }
             Task::PackageLinuxAll => package_linux_all()?,
+            Task::PackageAUR => package_aur(flags.rel)?,
+            Task::PublishAUR => publish_aur(flags.message)?,
         }
     } else if flags.list {
         println!("\nAvailable tasks:\n");
 
-        [
-            Task::PackageRPM,
-            Task::PackageDEB,
-            Task::PackageLinux,
-            Task::PackageWindows,
-            Task::PackageLinuxAll,
-        ]
-        .iter()
-        .for_each(|t| {
+        Task::iter().for_each(|t| {
             println!("    {t}");
         });
     }
@@ -97,7 +71,7 @@ fn main() -> anyhow::Result<()> {
 fn package_linux() -> anyhow::Result<()> {
     cargo("build")
         .with_arg("--release")
-        .run_and_wait("Building for linux")?;
+        .run("Building for linux")?;
 
     std::fs::copy(
         "target/release/ytdlp-gui",
@@ -114,9 +88,9 @@ fn package_rpm() -> anyhow::Result<()> {
 
     cargo("install")
         .with_args(["--locked", "cargo-generate-rpm"])
-        .run_and_wait("Installing cargo-generate-rpm")?;
+        .run("Installing cargo-generate-rpm")?;
 
-    cargo("generate-rpm").run_and_wait("Generating RPM package")?;
+    cargo("generate-rpm").run("Generating RPM package")?;
 
     for entry in glob::glob("target/generate-rpm/*.rpm").expect("Failed to read glob pattern") {
         let entry = entry?;
@@ -141,9 +115,9 @@ fn package_deb() -> anyhow::Result<()> {
 
     cargo("install")
         .with_arg("cargo-deb")
-        .run_and_wait("Installing cargo-deb")?;
+        .run("Installing cargo-deb")?;
 
-    cargo("deb").run_and_wait("Generating DEB package")?;
+    cargo("deb").run("Generating DEB package")?;
 
     std::fs::create_dir_all("packages")?;
 
@@ -205,7 +179,7 @@ fn package_windows() -> anyhow::Result<()> {
     {
         cargo("build")
             .with_arg("--release")
-            .run_and_wait("Building for Windows")?;
+            .run("Building for Windows")?;
 
         std::fs::rename("target/release/ytdlp-gui.exe", "windows/ytdlp-gui.exe")?;
     }
@@ -214,7 +188,7 @@ fn package_windows() -> anyhow::Result<()> {
     {
         cargo("build")
             .with_args(["--release", "--target", "x86_64-pc-windows-gnu"])
-            .run_and_wait("Building for Windows")?;
+            .run("Building for Windows")?;
 
         std::fs::rename(
             "target/x86_64-pc-windows-gnu/release/ytdlp-gui.exe",
@@ -228,128 +202,154 @@ fn package_windows() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn cargo(subcommand: &str) -> Command {
-    Command::new("cargo").with_arg(subcommand)
-}
-
-trait CommandExt {
-    fn with_arg(self, arg: &str) -> Self;
-    fn with_args<I, S>(self, args: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>;
-    fn run(self, msg: &str) -> std::io::Result<std::process::Child>;
-    fn run_and_wait(self, msg: &str) -> std::io::Result<std::process::ExitStatus>;
-}
-
-impl CommandExt for Command {
-    fn with_arg(mut self, arg: &str) -> Self {
-        self.arg(arg);
-
-        self
+fn package_aur(rel: Option<u8>) -> anyhow::Result<()> {
+    let mut ytdlp_gui_path = std::env::current_dir()?;
+    if ytdlp_gui_path.ends_with("mantask") {
+        ytdlp_gui_path.pop();
     }
+    let metadata = MetadataCommand::new()
+        .manifest_path(ytdlp_gui_path.join("Cargo.toml"))
+        .exec()
+        .unwrap();
 
-    fn with_args<I, S>(mut self, args: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.args(args);
+    let root_package = metadata.root_package().unwrap();
 
-        self
-    }
+    let version = root_package.version.to_string();
 
-    fn run(mut self, msg: &str) -> std::io::Result<std::process::Child> {
-        println!("{msg}");
-        self.spawn()
-    }
+    let aur_path = ytdlp_gui_path.join("aur");
+    let pkgbuild_path = aur_path.join("PKGBUILD");
 
-    fn run_and_wait(mut self, msg: &str) -> std::io::Result<std::process::ExitStatus> {
-        println!("{msg}");
-        self.spawn()?.wait()
-    }
-}
+    let pkgbuild = std::fs::read_to_string(&pkgbuild_path)?;
 
-fn zip_dir(src_dir: &str, dst_file: &str) -> anyhow::Result<()> {
-    if !Path::new(src_dir).is_dir() {
-        return Err(anyhow!("source dir not found"));
-    }
+    let pkgbuild = pkgbuild
+        .lines()
+        .try_fold(String::new(), |mut final_str, line| {
+            if line.starts_with("pkgver=") {
+                final_str.push_str(&format!("pkgver={}\n", version));
+            } else if line.starts_with("sha256sums=") {
+                let file_name = format!("v{version}.tar.gz");
+                let source_code = minreq::get(format!(
+                    "https://github.com/BKSalman/ytdlp-gui/archive/refs/tags/{}",
+                    file_name
+                ))
+                .send()
+                .context("failed to get source code from github")?
+                .into_bytes();
 
-    let path = Path::new(dst_file);
-    let file = File::create(path).unwrap();
+                let source_code_path = std::env::temp_dir().join(file_name);
 
-    let walkdir = WalkDir::new(src_dir);
-    let it = walkdir.into_iter().filter_map(|e| e.ok());
+                std::fs::write(&source_code_path, source_code)
+                    .context("failed to write source code to tar file")?;
 
-    let mut zip = zip::ZipWriter::new(file);
-    let options = FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+                let source_code = std::fs::read(source_code_path)?;
+                let sha = sha2::Sha256::digest(source_code);
+                let hex = hex::encode(sha);
 
-    let mut buffer = Vec::new();
-    for entry in it {
-        let path = entry.path();
-        let name = path.strip_prefix(Path::new(src_dir)).unwrap();
+                final_str.push_str(&format!("sha256sums=(\"{}\")\n", hex));
+            } else if line.starts_with("pkgrel") {
+                if let Some(rel) = rel {
+                    final_str.push_str(&format!("pkgrel={}\n", rel));
+                } else {
+                    final_str.push_str(&format!("{}\n", line));
+                }
+            } else {
+                final_str.push_str(&format!("{}\n", line));
+            }
 
-        // Write file or directory explicitly
-        // Some unzip tools unzip files with directory paths correctly, some do not!
-        if path.is_file() {
-            println!("adding file {path:?} as {name:?} ...");
-            #[allow(deprecated)]
-            zip.start_file_from_path(name, options)?;
-            let mut f = File::open(path)?;
+            anyhow::Ok(final_str)
+        })?;
 
-            f.read_to_end(&mut buffer)?;
-            zip.write_all(&buffer)?;
-            buffer.clear();
-        } else if !name.as_os_str().is_empty() {
-            // Only if not root! Avoids path spec / warning
-            // and mapname conversion failed error on unzip
-            println!("adding dir {path:?} as {name:?} ...");
-            #[allow(deprecated)]
-            zip.add_directory_from_path(name, options)?;
-        }
-    }
-    zip.finish()?;
+    std::fs::write(&pkgbuild_path, pkgbuild)?;
+
+    let old_current_dir = std::env::current_dir()?;
+
+    std::env::set_current_dir(&aur_path)?;
+
+    let srcinfo = std::process::Command::new("makepkg")
+        .with_args([&pkgbuild_path.display().to_string(), "--printsrc"])
+        .run_with_output("Printing to .SRCINFO\n")?;
+
+    println!("srcinfo:\n\n{srcinfo}");
+
+    std::env::set_current_dir(old_current_dir)?;
+
+    let srcinfo_path = aur_path.join(".SRCINFO");
+
+    std::fs::write(srcinfo_path, srcinfo)?;
 
     Ok(())
 }
 
-fn unzip(fname: &str, dst_prefix: &str) -> anyhow::Result<()> {
-    let file = File::open(fname)?;
-    let mut archive = zip::ZipArchive::new(file).unwrap();
-
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i).unwrap();
-        let outpath = match file.enclosed_name() {
-            Some(path) => Path::new(dst_prefix).to_path_buf().join(path),
-            None => continue,
-        };
-
-        {
-            let comment = file.comment();
-            if !comment.is_empty() {
-                println!("File {i} comment: {comment}");
-            }
-        }
-
-        if (*file.name()).ends_with('/') {
-            println!("File {} extracted to \"{}\"", i, outpath.display());
-            std::fs::create_dir_all(&outpath).unwrap();
-        } else {
-            println!(
-                "File {} extracted to \"{}\" ({} bytes)",
-                i,
-                outpath.display(),
-                file.size()
-            );
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    std::fs::create_dir_all(p).unwrap();
-                }
-            }
-            let mut outfile = std::fs::File::create(&outpath).unwrap();
-            std::io::copy(&mut file, &mut outfile).unwrap();
-        }
+fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
+    let mut ytdlp_gui_path = std::env::current_dir()?;
+    if ytdlp_gui_path.ends_with("mantask") {
+        ytdlp_gui_path.pop();
     }
+
+    let pkgbuild_path = ytdlp_gui_path.join("aur/PKGBUILD");
+    let srcinfo_path = ytdlp_gui_path.join("aur/.SRCINFO");
+
+    let pkgbuild = std::fs::read_to_string(&pkgbuild_path).context("failed to read PKGBUILD")?;
+
+    let pkgname = pkgbuild
+        .lines()
+        .find(|l| l.starts_with("pkgname"))
+        .map(|p| p.split_once('=').unwrap().1)
+        .ok_or(anyhow!("no pkgname"))?;
+
+    let pkgver = pkgbuild
+        .lines()
+        .find(|l| l.starts_with("pkgver"))
+        .map(|p| p.split_once('=').unwrap().1)
+        .ok_or(anyhow!("no pkgver"))?;
+
+    let pkgrel = pkgbuild
+        .lines()
+        .find(|l| l.starts_with("pkgrel"))
+        .map(|p| p.split_once('=').unwrap().1)
+        .ok_or(anyhow!("no pkgrel"))?;
+
+    std::env::set_current_dir(std::env::temp_dir())?;
+
+    let temp_aur = std::env::temp_dir().join("ytdlp-gui-aur");
+
+    let _ = std::fs::remove_dir_all(&temp_aur);
+
+    let clone_output = git("clone")
+        .with_args([
+            "-v",
+            &format!("ssh://aur@aur.archlinux.org/{pkgname}.git"),
+            "ytdlp-gui-aur",
+        ])
+        .run_with_output("Clone AUR package")?;
+    println!("clone stdout:\n{}", clone_output);
+
+    println!("Copying PKGBUILD and .SRCINFO to {}", temp_aur.display());
+    std::fs::copy(pkgbuild_path, temp_aur.join("PKGBUILD")).context("failed to copy PKGBUILD")?;
+    std::fs::copy(srcinfo_path, temp_aur.join(".SRCINFO")).context("failed to copy .SRCINFO")?;
+
+    std::env::set_current_dir(temp_aur)?;
+
+    let add_output = git("add")
+        .with_args(["-v", "."])
+        .run_with_output("Add AUR changes")?;
+    println!("add stdout:\n{}", add_output);
+
+    let commit_output = git("commit")
+        .with_args([
+            "-v",
+            "-m",
+            &format!(
+                "Update to {pkgver}-{pkgrel} {}",
+                message.unwrap_or(String::new())
+            ),
+        ])
+        .run_with_output("Commiting AUR changes")
+        .context("failed to commit AUR changes")?;
+    println!("commit stdout:\n{}", commit_output);
+
+    let push_output = git("push").run_with_output("Pushing to AUR")?;
+    println!("push stdout:\n{}", push_output);
 
     Ok(())
 }
