@@ -22,8 +22,11 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         craneLib = crane.lib.${system};
+
         pkgs = import nixpkgs { inherit system; overlays = [ rust-overlay.overlays.default ]; };
+
         libPath =  with pkgs; lib.makeLibraryPath [
+          vulkan-loader
           libGL
           bzip2
           fontconfig
@@ -63,7 +66,7 @@
         cargoArtifacts = craneLib.buildDepsOnly ({
           src = craneLib.cleanCargoSource (craneLib.path ./.);
           inherit buildInputs nativeBuildInputs;
-          pname = "ytdlp-gui-deps";
+          pname = "ytdlp-gui";
         });
       in with pkgs; {
         packages = rec {
@@ -79,9 +82,10 @@
               done
               install -Dm644 "$src/data/applications/ytdlp-gui.desktop" -t "$out/share/applications/"
 
+              patchelf --set-rpath ${libPath} $out/bin/ytdlp-gui
+
               wrapProgram $out/bin/ytdlp-gui \
                 --prefix PATH : ${lib.makeBinPath [ pkgs.gnome.zenity pkgs.libsForQt5.kdialog]}\
-                --suffix LD_LIBRARY_PATH : ${libPath}
             '';
 
             GIT_HASH = self.rev or self.dirtyRev;
