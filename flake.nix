@@ -27,7 +27,10 @@
 
         libPath =  with pkgs; lib.makeLibraryPath [
           vulkan-loader
+          vulkan-headers
           libGL
+          wayland
+          libxkbcommon
           bzip2
           fontconfig
           freetype
@@ -45,8 +48,12 @@
         ];
 
         buildInputs = with pkgs; [
+          expat
+          pkgconfig
+
           fontconfig
           freetype
+          freetype.dev
 
           vulkan-headers
           vulkan-loader
@@ -57,10 +64,10 @@
           wayland
 
           # WINIT_UNIX_BACKEND=x11
-          xorg.libXcursor
-          xorg.libXrandr
-          xorg.libXi
           xorg.libX11
+          xorg.libXcursor
+          xorg.libXi
+          xorg.libXrandr
         ];
 
         cargoArtifacts = craneLib.buildDepsOnly ({

@@ -379,7 +379,9 @@ impl Application for YtGUI {
                                 self.modal_title = String::from("Downloading");
                             }
 
-                            let eta = chrono::Duration::seconds(eta.into());
+                            // `eta as i64` rounds it
+                            // for examlpe: 12.368520936129604 as i64 = 12
+                            let eta = chrono::Duration::seconds(eta as i64);
 
                             let downloaded_megabytes = downloaded_bytes / 1024_f32.powi(2);
                             let total_downloaded = if downloaded_megabytes > 1024. {

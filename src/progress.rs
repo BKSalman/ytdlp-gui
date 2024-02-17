@@ -68,7 +68,7 @@ pub enum Progress {
     },
     Downloading {
         video_title: String,
-        eta: i32,
+        eta: f64,
         downloaded_bytes: f32,
         total_bytes: f32,
         elapsed: f32,
