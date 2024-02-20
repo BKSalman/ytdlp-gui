@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Bugfix: parse ETA as float instead of integer
+
 ## 1.0.0
 (got bored of the 0.whatever so I'm bumping it to 1.0.0)
 
