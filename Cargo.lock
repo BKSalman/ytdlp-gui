@@ -3532,7 +3532,7 @@ checksum = "47430998a7b5d499ccee752b41567bc3afc57e1327dc855b1a2aa44ce29b5fa1"
 
 [[package]]
 name = "ytdlp-gui"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "chrono",
  "dirs",
