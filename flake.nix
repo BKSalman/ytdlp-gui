@@ -27,7 +27,6 @@
 
         libPath =  with pkgs; lib.makeLibraryPath [
           vulkan-loader
-          vulkan-headers
           libGL
           wayland
           libxkbcommon
@@ -43,13 +42,12 @@
         nativeBuildInputs = with pkgs; [
           pkg-config
           cmake
-          mesa
           makeWrapper
         ];
 
         buildInputs = with pkgs; [
           expat
-          pkgconfig
+          pkg-config
 
           fontconfig
           freetype
@@ -111,7 +109,6 @@
             cargo-watch
             gnome.zenity
             libsForQt5.kdialog
-            act
           ];
           LD_LIBRARY_PATH = "${libPath}";
         };
