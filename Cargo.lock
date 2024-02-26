@@ -267,6 +267,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "cgl"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ced0551234e87afee12411d535648dd89d2e7f34c78b753395567aff3d447ff"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -988,6 +997,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
 
 [[package]]
+name = "gl_generator"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a95dfc23a2b4a9a2f5ab41d194f8bfda3cabec42af4e39f08c339eb2a0c124d"
+dependencies = [
+ "khronos_api",
+ "log",
+ "xml-rs",
+]
+
+[[package]]
 name = "glam"
 version = "0.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1001,6 +1021,18 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
 name = "glow"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8bd5877156a19b8ac83a29b2306fe20537429d318f3ff0a1a2119f8d9c61919"
+dependencies = [
+ "js-sys",
+ "slotmap",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "glow"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca0fe580e4b60a8ab24a868bc08e2f03cbcb20d3d676601fa909386713333728"
@@ -1009,6 +1041,83 @@ dependencies = [
  "slotmap",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "glow_glyph"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f4e62c64947b9a24fe20e2bba9ad819ecb506ef5c8df7ffc4737464c6df9510"
+dependencies = [
+ "bytemuck",
+ "glow 0.11.2",
+ "glyph_brush",
+ "log",
+]
+
+[[package]]
+name = "glutin"
+version = "0.29.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "444c9ad294fdcaf20ccf6726b78f380b5450275540c9b68ab62f49726ad1c713"
+dependencies = [
+ "cgl",
+ "cocoa",
+ "core-foundation",
+ "glutin_egl_sys",
+ "glutin_gles2_sys",
+ "glutin_glx_sys",
+ "glutin_wgl_sys",
+ "libloading 0.7.4",
+ "log",
+ "objc",
+ "once_cell",
+ "osmesa-sys",
+ "parking_lot 0.12.1",
+ "raw-window-handle 0.5.2",
+ "wayland-client",
+ "wayland-egl",
+ "winapi",
+ "winit",
+]
+
+[[package]]
+name = "glutin_egl_sys"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68900f84b471f31ea1d1355567eb865a2cf446294f06cef8d653ed7bcf5f013d"
+dependencies = [
+ "gl_generator",
+ "winapi",
+]
+
+[[package]]
+name = "glutin_gles2_sys"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8094e708b730a7c8a1954f4f8a31880af00eb8a1c5b5bf85d28a0a3c6d69103"
+dependencies = [
+ "gl_generator",
+ "objc",
+]
+
+[[package]]
+name = "glutin_glx_sys"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d93d0575865098580c5b3a423188cd959419912ea60b1e48e8b3b526f6d02468"
+dependencies = [
+ "gl_generator",
+ "x11-dl",
+]
+
+[[package]]
+name = "glutin_wgl_sys"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3da5951a1569dbab865c6f2a863efafff193a93caf05538d193e9e3816d21696"
+dependencies = [
+ "gl_generator",
 ]
 
 [[package]]
@@ -1196,6 +1305,8 @@ checksum = "efbddf356d01e9d41cd394a9d04d62bfd89650a30f12fda5839cabb8c4591c88"
 dependencies = [
  "iced_core",
  "iced_futures",
+ "iced_glow",
+ "iced_glutin",
  "iced_graphics",
  "iced_native",
  "iced_wgpu",
@@ -1235,6 +1346,35 @@ dependencies = [
  "log",
  "wasm-bindgen-futures",
  "wasm-timer",
+]
+
+[[package]]
+name = "iced_glow"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adc5b081015f5c75777c96ad75e2288916e7d444c97396d6d136517877ef9129"
+dependencies = [
+ "bytemuck",
+ "euclid",
+ "glow 0.11.2",
+ "glow_glyph",
+ "glyph_brush",
+ "iced_graphics",
+ "iced_native",
+ "log",
+]
+
+[[package]]
+name = "iced_glutin"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c427ca018d29508512581d832fbaa7b6c8ec34c39d438f35f59e363a6419953"
+dependencies = [
+ "glutin",
+ "iced_graphics",
+ "iced_native",
+ "iced_winit",
+ "log",
 ]
 
 [[package]]
@@ -1396,6 +1536,12 @@ dependencies = [
  "libloading 0.7.4",
  "pkg-config",
 ]
+
+[[package]]
+name = "khronos_api"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "lazy_static"
@@ -1831,6 +1977,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a54938017eacd63036332b4ae5c8a49fc8c0c1d6d629893057e4f13609edd06"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "osmesa-sys"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88cfece6e95d2e717e0872a7f53a8684712ad13822a7979bc760b9c77ec0013b"
+dependencies = [
+ "shared_library",
 ]
 
 [[package]]
@@ -2403,6 +2558,16 @@ checksum = "b0d94659ad3c2137fef23ae75b03d5241d633f8acded53d672decfa0e6e0caef"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "shared_library"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a9e7e0f2bfae24d8a5b5a66c5b257a83c7412304311512a0c054cd5e619da11"
+dependencies = [
+ "lazy_static",
+ "libc",
 ]
 
 [[package]]
@@ -2994,6 +3159,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "wayland-egl"
+version = "0.29.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "402de949f81a012926d821a2d659f930694257e76dd92b6e0042ceb27be4107d"
+dependencies = [
+ "wayland-client",
+ "wayland-sys",
+]
+
+[[package]]
 name = "wayland-protocols"
 version = "0.29.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3116,7 +3291,7 @@ dependencies = [
  "d3d12",
  "foreign-types 0.3.2",
  "fxhash",
- "glow",
+ "glow 0.12.3",
  "gpu-alloc",
  "gpu-allocator",
  "gpu-descriptor",
@@ -3532,7 +3707,7 @@ checksum = "47430998a7b5d499ccee752b41567bc3afc57e1327dc855b1a2aa44ce29b5fa1"
 
 [[package]]
 name = "ytdlp-gui"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "chrono",
  "dirs",

@@ -19,7 +19,7 @@ members = [
 [dependencies]
 chrono = { version = "0.4.23", default-features = false, features = ["clock"] }
 dirs = "4.0.0"
-iced = { version = "0.9.0" }
+iced = { version = "0.9.0", features = [ "glow" ] }
 iced_aw = { version = "0.5.0", features = ["tabs", "modal", "card"], default-features = false }
 iced_native = "0.10.0"
 native-dialog = "0.6.3"
