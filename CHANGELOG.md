@@ -3,6 +3,7 @@
 ## 1.0.2
 
 - Minor: Padding for ETA seconds and minutes. instead of `2:1` now it's `02:01`
+- Minor: The application ships with glow support by default now
 
 ## 1.0.1
 
