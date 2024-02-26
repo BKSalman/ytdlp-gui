@@ -391,7 +391,7 @@ impl Application for YtGUI {
                             };
 
                             self.modal_body = format!(
-                                "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins}:{eta_secs}",
+                                "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins:02}:{eta_secs:02}",
                                 speed = speed / 1024_f32.powi(2),
                                 // percent = if self.progress.is_infinite() {
                                 //     100.
