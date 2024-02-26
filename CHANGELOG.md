@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+- Minor: Padding for ETA seconds and minutes. instead of `2:1` now it's `02:01`
+
 ## 1.0.1
 
 - Bugfix: parse ETA as float instead of integer
