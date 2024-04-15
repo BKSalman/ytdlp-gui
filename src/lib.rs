@@ -1,6 +1,6 @@
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 #[cfg(feature = "explain")]
@@ -17,7 +17,7 @@ use iced::{
 use iced::{window, Event};
 use iced_aw::Card;
 
-use native_dialog::FileDialog;
+use rfd::AsyncFileDialog;
 use serde::{Deserialize, Serialize};
 
 pub mod command;
@@ -56,7 +56,8 @@ pub enum Message {
     SelectedResolution(VideoResolution),
     SelectedAudioFormat(AudioFormat),
     SelectedAudioQuality(AudioQuality),
-    SelectFolder,
+    SelectDownloadFolder,
+    SelectedDownloadFolder(Option<PathBuf>),
     SelectFolderTextInput(String),
     SelectTab(Tab),
     ProgressEvent(String),
@@ -100,6 +101,7 @@ pub struct YtGUI {
     active_tab: Tab,
     modal_body: String,
     modal_title: String,
+    is_choosing_folder: bool,
 
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
@@ -314,6 +316,7 @@ impl Application for YtGUI {
                 progress: 0.,
                 window_height: 0.,
                 window_width: 0.,
+                is_choosing_folder: false,
             },
             iced::Command::none(),
         )
@@ -340,19 +343,26 @@ impl Application for YtGUI {
             Message::SelectedVideoFormat(format) => {
                 self.config.options.video_format = format;
             }
-            Message::SelectFolder => {
-                if let Ok(Some(path)) = FileDialog::new()
-                    .set_location(
-                        &self
-                            .config
-                            .download_folder
-                            .clone()
-                            .unwrap_or_else(|| "~/Videos".into()),
-                    )
-                    .show_open_single_dir()
-                {
+            Message::SelectDownloadFolder => {
+                if !self.is_choosing_folder {
+                    self.is_choosing_folder = true;
+
+                    return iced::Command::perform(
+                        choose_folder(
+                            self.config
+                                .download_folder
+                                .clone()
+                                .unwrap_or_else(|| "~/Videos".into()),
+                        ),
+                        Message::SelectedDownloadFolder,
+                    );
+                }
+            }
+            Message::SelectedDownloadFolder(folder) => {
+                if let Some(path) = folder {
                     self.config.download_folder = Some(path);
                 }
+                self.is_choosing_folder = false;
             }
             Message::SelectFolderTextInput(folder_string) => {
                 let path = PathBuf::from(folder_string);
@@ -532,7 +542,7 @@ impl Application for YtGUI {
                         .to_string_lossy()
                 )
                 .on_input(Message::SelectFolderTextInput),
-                button("Browse").on_press(Message::SelectFolder),
+                button("Browse").on_press(Message::SelectDownloadFolder),
             ]
             .spacing(SPACING)
             .align_items(iced::Alignment::Center),
@@ -586,6 +596,14 @@ impl Application for YtGUI {
         let iced_events = iced::event::listen().map(Message::IcedEvent);
         Subscription::batch(vec![bind(), iced_events])
     }
+}
+
+async fn choose_folder(starting_dir: impl AsRef<Path>) -> Option<PathBuf> {
+    AsyncFileDialog::new()
+        .set_directory(starting_dir)
+        .pick_folder()
+        .await
+        .map(|f| f.path().to_path_buf())
 }
 
 pub fn logging() {

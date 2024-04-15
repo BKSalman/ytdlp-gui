@@ -4,6 +4,9 @@
 
 - Major: Updated `iced` to 0.12.1
 - Minor: The download modal now resizes with the window (taking half the width and the height)
+- Minor: made folder dialog not block the GUI thread
+- Dev: Replaced native_dialog with rfd
+
 ## 1.0.2
 
 - Minor: Padding for ETA seconds and minutes. instead of `2:1` now it's `02:01`

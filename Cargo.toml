@@ -22,7 +22,7 @@ dirs = "4.0.0"
 iced = { version = "0.12.1" }
 iced_aw = { version = "0.8.0", features = ["tabs", "modal", "card"], default-features = false }
 iced_runtime = "0.12.1"
-native-dialog = "0.6.3"
+rfd = "0.13"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.104"
 shared_child = "1.0.0"
