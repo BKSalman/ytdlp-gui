@@ -62,6 +62,7 @@ pub enum Message {
     ProgressEvent(String),
     Ready(UnboundedSender<String>),
     Command(command::Message),
+    UpdateWindowSize(iced::Size),
     IcedEvent(Event),
 }
 
@@ -103,6 +104,8 @@ pub struct YtGUI {
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
     progress: f32,
+    window_height: f32,
+    window_width: f32,
 }
 
 impl YtGUI {
@@ -198,8 +201,8 @@ impl YtGUI {
                     }
                 };
                 self.progress = 0.;
-                self.modal_body = String::from("Already exists");
                 self.modal_title = String::from("Error");
+                self.modal_body = String::from("Already exists");
             }
             command::Message::PlaylistNotChecked => {
                 match self.command.kill() {
@@ -211,8 +214,8 @@ impl YtGUI {
                     }
                 };
                 self.progress = 0.;
-                self.modal_body = String::from("Playlist checkbox not checked!");
                 self.modal_title = String::from("Error");
+                self.modal_body = String::from("Playlist checkbox not checked!");
             }
             command::Message::Finished => {
                 match self.command.kill() {
@@ -247,6 +250,7 @@ impl YtGUI {
             }
         }
     }
+
     fn log_download(&self) {
         let downloads_log_path = dirs::cache_dir()
             .expect("config directory")
@@ -308,6 +312,8 @@ impl Application for YtGUI {
                 sender: None,
                 command: command::Command::default(),
                 progress: 0.,
+                window_height: 0.,
+                window_width: 0.,
             },
             iced::Command::none(),
         )
@@ -452,14 +458,25 @@ impl Application for YtGUI {
             Message::Ready(sender) => {
                 self.sender = Some(sender);
             }
+            Message::UpdateWindowSize(size) => {
+                self.window_width = size.width;
+                self.window_height = size.height;
+            }
             Message::IcedEvent(event) => {
-                if let Event::Window(id, window::Event::CloseRequested) = event {
-                    if self.command.kill().is_ok() {
-                        tracing::debug!("killed child process");
+                if let Event::Window(id, window_event) = event {
+                    match window_event {
+                        window::Event::CloseRequested => {
+                            if self.command.kill().is_ok() {
+                                tracing::debug!("killed child process");
+                            }
+                            return iced::Command::single(iced_runtime::command::Action::Window(
+                                Action::Close(id),
+                            ));
+                        }
+                        _ => {
+                            return window::fetch_size(id, Message::UpdateWindowSize);
+                        }
                     }
-                    return iced::Command::single(iced_runtime::command::Action::Window(
-                        Action::Close(id),
-                    ));
                 }
             }
             Message::None => {}
@@ -547,8 +564,8 @@ impl Application for YtGUI {
                     .align_items(iced::Alignment::Center),
                 )
                 .width(Length::Fill)
-                .max_height(70.)
-                .max_width(300.)
+                .max_height(self.window_height / 2.)
+                .max_width(self.window_width / 2.)
                 .on_close(Message::Command(command::Message::Stop)),
             ),
         );
