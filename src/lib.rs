@@ -3,15 +3,19 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::{fs, io};
 
+#[cfg(feature = "explain")]
+use iced::Color;
+
 use chrono::Local;
+use iced::window::Action;
 use iced::{executor, widget::container};
 use iced::{
     futures::channel::mpsc::UnboundedSender,
     widget::{button, checkbox, column, progress_bar, row, text, text_input},
     Application, Length, Subscription,
 };
+use iced::{window, Event};
 use iced_aw::Card;
-use iced_native::subscription;
 
 use native_dialog::FileDialog;
 use serde::{Deserialize, Serialize};
@@ -54,11 +58,11 @@ pub enum Message {
     SelectedAudioQuality(AudioQuality),
     SelectFolder,
     SelectFolderTextInput(String),
-    SelectTab(usize),
+    SelectTab(Tab),
     ProgressEvent(String),
     Ready(UnboundedSender<String>),
     Command(command::Message),
-    IcedEvent(iced_native::Event),
+    IcedEvent(Event),
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -80,13 +84,19 @@ impl Config {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Tab {
+    Video,
+    Audio,
+}
+
 pub struct YtGUI {
     download_link: String,
     is_playlist: bool,
     config: Config,
 
     show_modal: bool,
-    active_tab: usize,
+    active_tab: Tab,
     modal_body: String,
     modal_title: String,
 
@@ -122,9 +132,7 @@ impl YtGUI {
                 args.push(&link);
 
                 match self.active_tab {
-                    0 => {
-                        // Video tab
-
+                    Tab::Video => {
                         args.push("-S");
 
                         args.push(self.config.options.video_resolution.options());
@@ -139,7 +147,7 @@ impl YtGUI {
 
                         tracing::info!("{args:#?}");
                     }
-                    1 => {
+                    Tab::Audio => {
                         // Audio tab
 
                         // Extract audio from Youtube video
@@ -151,7 +159,6 @@ impl YtGUI {
                         args.push("--audio-quality");
                         args.push(self.config.options.audio_quality.options());
                     }
-                    _ => {}
                 }
 
                 let playlist_options =
@@ -257,16 +264,15 @@ impl YtGUI {
             "{}::{}::{}::{}",
             Local::now(),
             self.download_link,
-            if self.active_tab == 1 {
-                format!(
+            match self.active_tab {
+                Tab::Video => format!(
                     "{:?}:{:?}",
                     self.config.options.video_resolution, self.config.options.video_format
-                )
-            } else {
-                format!(
+                ),
+                Tab::Audio => format!(
                     "{:?}:{:?}",
                     self.config.options.audio_quality, self.config.options.audio_format
-                )
+                ),
             },
             self.config
                 .download_folder
@@ -295,7 +301,7 @@ impl Application for YtGUI {
                 config: flags,
 
                 show_modal: false,
-                active_tab: 0,
+                active_tab: Tab::Video,
                 modal_body: String::default(),
                 modal_title: String::from("Downloading"),
 
@@ -347,8 +353,8 @@ impl Application for YtGUI {
 
                 self.config.download_folder = Some(path);
             }
-            Message::SelectTab(tab_number) => {
-                self.active_tab = tab_number;
+            Message::SelectTab(selected_tab) => {
+                self.active_tab = selected_tab;
             }
             Message::SelectedAudioFormat(format) => {
                 self.config.options.audio_format = format;
@@ -447,14 +453,12 @@ impl Application for YtGUI {
                 self.sender = Some(sender);
             }
             Message::IcedEvent(event) => {
-                if let iced_native::Event::Window(iced_native::window::Event::CloseRequested) =
-                    event
-                {
+                if let Event::Window(id, window::Event::CloseRequested) = event {
                     if self.command.kill().is_ok() {
                         tracing::debug!("killed child process");
                     }
-                    return iced::Command::single(iced_native::command::Action::Window(
-                        iced_native::window::Action::Close,
+                    return iced::Command::single(iced_runtime::command::Action::Window(
+                        Action::Close(id),
                     ));
                 }
             }
@@ -475,26 +479,28 @@ impl Application for YtGUI {
                     )))
                     .size(FONT_SIZE)
                     .width(Length::Fill),
-                checkbox("Playlist", self.is_playlist, Message::TogglePlaylist)
+                checkbox("Playlist", self.is_playlist).on_toggle(Message::TogglePlaylist)
             ]
             .spacing(7)
             .align_items(iced::Alignment::Center),
-            Tabs::new(self.active_tab, Message::SelectTab)
+            Tabs::new(Message::SelectTab)
                 .push(
+                    Tab::Video,
                     iced_aw::TabLabel::Text("Video".to_string()),
                     column![
-                        Options::video_resolutions(self.config.options.video_resolution)
-                            .width(Length::Fill),
+                        Options::video_resolutions(self.config.options.video_resolution),
                         Options::video_formats(self.config.options.video_format),
                     ],
                 )
                 .push(
+                    Tab::Audio,
                     iced_aw::TabLabel::Text("Audio".to_string()),
                     column![
                         Options::audio_qualities(self.config.options.audio_quality),
                         Options::audio_formats(self.config.options.audio_format),
                     ],
                 )
+                .set_active_tab(&self.active_tab)
                 .height(Length::Shrink)
                 .width(Length::FillPortion(1))
                 .tab_bar_width(Length::FillPortion(1)),
@@ -525,27 +531,32 @@ impl Application for YtGUI {
         .padding(20)
         .into();
 
-        let content = Modal::new(self.show_modal, content, || {
-            Card::new(
-                text(&*self.modal_title)
-                    .horizontal_alignment(iced::alignment::Horizontal::Center)
-                    .vertical_alignment(iced::alignment::Vertical::Center),
-                column![
-                    text(self.modal_body.clone())
+        let content = Modal::new(
+            content,
+            self.show_modal.then_some(
+                Card::new(
+                    text(self.modal_title.as_str())
                         .horizontal_alignment(iced::alignment::Horizontal::Center)
-                        .height(Length::Fill),
-                    row![progress_bar(0.0..=100., self.progress)]
-                ]
-                .align_items(iced::Alignment::Center),
-            )
-            .width(Length::Fill)
-            .max_height(70.)
-            .max_width(300.)
-            .on_close(Message::Command(command::Message::Stop))
-            .into()
-        });
+                        .vertical_alignment(iced::alignment::Vertical::Center),
+                    column![
+                        text(self.modal_body.as_str())
+                            .horizontal_alignment(iced::alignment::Horizontal::Center)
+                            .height(Length::Fill),
+                        row![progress_bar(0.0..=100., self.progress)]
+                    ]
+                    .align_items(iced::Alignment::Center),
+                )
+                .width(Length::Fill)
+                .max_height(70.)
+                .max_width(300.)
+                .on_close(Message::Command(command::Message::Stop)),
+            ),
+        );
 
-        // let content = content.explain(Color::BLACK);
+        #[cfg(feature = "explain")]
+        let content: crate::widgets::Element<Message> = content.into();
+        #[cfg(feature = "explain")]
+        let content: crate::widgets::Element<Message> = content.explain(Color::BLACK);
 
         container(content)
             .height(Length::Fill)
@@ -555,7 +566,7 @@ impl Application for YtGUI {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        let iced_events = subscription::events().map(Message::IcedEvent);
+        let iced_events = iced::event::listen().map(Message::IcedEvent);
         Subscription::batch(vec![bind(), iced_events])
     }
 }

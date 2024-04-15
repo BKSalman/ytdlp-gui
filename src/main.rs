@@ -1,7 +1,5 @@
 #![cfg_attr(not(debug_assertion), windows_subsystem = "windows")]
 
-use std::fs;
-
 use iced::{window, Application, Settings};
 use ytdlp_gui::{git_hash, logging, Config, YtGUI};
 
@@ -33,15 +31,15 @@ fn main() -> iced::Result {
         .expect("config directory")
         .join("ytdlp-gui/");
 
-    fs::create_dir_all(&config_dir).expect("create config dir");
+    std::fs::create_dir_all(&config_dir).expect("create config dir");
 
-    let config_file = match fs::read_to_string(config_dir.join("config.toml")) {
+    let config_file = match std::fs::read_to_string(config_dir.join("config.toml")) {
         Ok(file) => file,
         Err(e) => match e.kind() {
             std::io::ErrorKind::NotFound => {
                 tracing::warn!("Config file not found, creating a default config file...");
                 let new_config = toml::to_string(&Config::default()).expect("Config to string");
-                fs::write(config_dir.join("config.toml"), &new_config)
+                std::fs::write(config_dir.join("config.toml"), &new_config)
                     .expect("create new config file");
 
                 new_config
@@ -60,11 +58,11 @@ fn main() -> iced::Result {
     let settings = Settings {
         id: Some(String::from("ytdlp-gui")),
         window: window::Settings {
-            size: (600, 320),
+            size: iced::Size::new(600., 320.),
             resizable: false,
+            exit_on_close_request: false,
             ..Default::default()
         },
-        exit_on_close_request: false,
         flags: config,
         ..Default::default()
     };

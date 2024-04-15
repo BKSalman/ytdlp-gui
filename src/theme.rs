@@ -1,12 +1,13 @@
+use iced::border::Radius;
 use iced::overlay::menu;
 use iced::widget::{
     button, checkbox, container, pick_list, progress_bar, radio, scrollable, text, text_input,
 };
-use iced::{application, theme, Color};
-use iced_aw::{modal, style::card, tabs};
-use iced_native::Background;
+use iced::{application, theme, Background, Border, Color};
+use iced_aw::style::tab_bar;
+use iced_aw::{modal, style::card};
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Theme;
 
 const SURFACE: Color = Color::from_rgb(
@@ -48,13 +49,16 @@ const DANGER: Color = Color::from_rgb(
 );
 
 pub fn ytdlp_gui_theme() -> theme::Theme {
-    theme::Theme::custom(theme::Palette {
-        background: SURFACE,
-        text: Color::WHITE,
-        primary: ACTIVE,
-        success: HOVERED,
-        danger: DANGER,
-    })
+    theme::Theme::custom(
+        String::from("ytdlp_gui_theme"),
+        theme::Palette {
+            background: SURFACE,
+            text: Color::WHITE,
+            primary: ACTIVE,
+            success: HOVERED,
+            danger: DANGER,
+        },
+    )
 }
 
 impl application::StyleSheet for Theme {
@@ -71,7 +75,7 @@ impl application::StyleSheet for Theme {
 impl card::StyleSheet for Theme {
     type Style = ();
 
-    fn active(&self, _style: Self::Style) -> iced_aw::card::Appearance {
+    fn active(&self, _style: &Self::Style) -> iced_aw::card::Appearance {
         iced_aw::card::Appearance {
             background: SURFACE.into(),
             body_text_color: Color::WHITE,
@@ -88,38 +92,38 @@ impl card::StyleSheet for Theme {
 impl modal::StyleSheet for Theme {
     type Style = ();
 
-    fn active(&self, _style: Self::Style) -> iced_aw::style::modal::Appearance {
+    fn active(&self, _style: &Self::Style) -> iced_aw::style::modal::Appearance {
         iced_aw::style::modal::Appearance {
             background: Color::from_rgba(0.01, 0.01, 0.01, 0.5).into(),
         }
     }
 }
 
-impl tabs::StyleSheet for Theme {
+impl tab_bar::StyleSheet for Theme {
     type Style = ();
 
-    fn active(&self, style: Self::Style, is_active: bool) -> iced_aw::style::tab_bar::Appearance {
+    fn active(&self, style: &Self::Style, is_active: bool) -> iced_aw::style::tab_bar::Appearance {
         if is_active {
             iced_aw::style::tab_bar::Appearance {
-                background: ACTIVE.into(),
+                background: Some(ACTIVE.into()),
                 tab_label_background: ACTIVE.into(),
-                ..self.hovered(style, is_active)
+                ..self.hovered(&style, is_active)
             }
         } else {
             iced_aw::style::tab_bar::Appearance {
-                background: SURFACE.into(),
+                background: Some(SURFACE.into()),
                 tab_label_background: SURFACE.into(),
-                ..self.hovered(style, is_active)
+                ..self.hovered(&style, is_active)
             }
         }
     }
     fn hovered(
         &self,
-        _style: Self::Style,
+        _style: &Self::Style,
         _is_active: bool,
     ) -> iced_aw::style::tab_bar::Appearance {
         iced_aw::style::tab_bar::Appearance {
-            background: HOVERED.into(),
+            background: Some(HOVERED.into()),
             text_color: Color::WHITE,
             border_color: None,
             border_width: 0.,
@@ -127,6 +131,8 @@ impl tabs::StyleSheet for Theme {
             tab_label_background: HOVERED.into(),
             tab_label_border_color: Color::TRANSPARENT,
             tab_label_border_width: 1.,
+            icon_background: None,
+            icon_border_radius: Radius::default(),
         }
     }
 }
@@ -136,7 +142,7 @@ impl container::StyleSheet for Theme {
 
     fn appearance(&self, _style: &Self::Style) -> container::Appearance {
         container::Appearance {
-            background: Color::from_rgb8(0x36, 0x39, 0x3F).into(),
+            background: Some(Color::from_rgb8(0x36, 0x39, 0x3F).into()),
             text_color: Color::WHITE.into(),
             ..Default::default()
         }
@@ -180,17 +186,22 @@ impl text_input::StyleSheet for Theme {
     fn active(&self, _style: &Self::Style) -> text_input::Appearance {
         text_input::Appearance {
             background: SURFACE.into(),
-            border_radius: 2.0,
-            border_width: 0.0,
-            border_color: Color::TRANSPARENT,
             icon_color: Color::TRANSPARENT,
+            border: Border {
+                radius: Radius::from(2.0),
+                width: 0.0,
+                color: Color::TRANSPARENT,
+            },
         }
     }
 
     fn focused(&self, style: &Self::Style) -> text_input::Appearance {
         text_input::Appearance {
-            border_width: 1.0,
-            border_color: ACCENT,
+            border: Border {
+                width: 1.0,
+                color: ACCENT,
+                ..Default::default()
+            },
             ..self.active(style)
         }
     }
@@ -223,8 +234,11 @@ impl button::StyleSheet for Theme {
 
     fn active(&self, _style: &Self::Style) -> button::Appearance {
         button::Appearance {
-            background: ACTIVE.into(),
-            border_radius: 3.0,
+            background: Some(ACTIVE.into()),
+            border: Border {
+                radius: Radius::from(3.0),
+                ..Default::default()
+            },
             text_color: Color::WHITE,
             ..Default::default()
         }
@@ -232,7 +246,7 @@ impl button::StyleSheet for Theme {
 
     fn hovered(&self, style: &Self::Style) -> button::Appearance {
         button::Appearance {
-            background: HOVERED.into(),
+            background: Some(HOVERED.into()),
             text_color: Color::WHITE,
             ..self.active(style)
         }
@@ -240,8 +254,11 @@ impl button::StyleSheet for Theme {
 
     fn pressed(&self, style: &Self::Style) -> button::Appearance {
         button::Appearance {
-            border_width: 1.0,
-            border_color: Color::WHITE,
+            border: Border {
+                width: 1.0,
+                color: Color::WHITE,
+                ..Default::default()
+            },
             ..self.hovered(style)
         }
     }
@@ -254,7 +271,7 @@ impl progress_bar::StyleSheet for Theme {
         progress_bar::Appearance {
             background: SURFACE.into(),
             bar: ACTIVE.into(),
-            border_radius: 5.0,
+            border_radius: Radius::from(5.0),
         }
     }
 }
@@ -265,9 +282,11 @@ impl checkbox::StyleSheet for Theme {
     fn active(&self, _style: &Self::Style, is_checked: bool) -> checkbox::Appearance {
         checkbox::Appearance {
             background: if is_checked { ACTIVE } else { SURFACE }.into(),
-            border_radius: 2.0,
-            border_width: 1.0,
-            border_color: ACTIVE,
+            border: Border {
+                radius: Radius::from(2.0),
+                width: 1.0,
+                color: ACTIVE,
+            },
             text_color: None,
             icon_color: Color::WHITE,
         }
@@ -294,15 +313,20 @@ impl pick_list::StyleSheet for Theme {
             placeholder_color: PLACEHOLDER,
             handle_color: Color::WHITE,
             background: Background::Color(SURFACE),
-            border_radius: 2.0,
-            border_width: 0.0,
-            border_color: Color::TRANSPARENT,
+            border: Border {
+                radius: Radius::from(2.0),
+                width: 0.0,
+                color: Color::TRANSPARENT,
+            },
         }
     }
 
     fn hovered(&self, style: &<Self as pick_list::StyleSheet>::Style) -> pick_list::Appearance {
         pick_list::Appearance {
-            border_color: HOVERED,
+            border: Border {
+                color: HOVERED,
+                ..Default::default()
+            },
             background: Background::Color(HOVERED),
             ..self.active(style)
         }
@@ -312,36 +336,60 @@ impl pick_list::StyleSheet for Theme {
 impl scrollable::StyleSheet for Theme {
     type Style = ();
 
-    fn active(&self, _style: &Self::Style) -> scrollable::Scrollbar {
-        scrollable::Scrollbar {
-            background: None,
-            border_radius: 2.,
-            border_width: 0.,
-            border_color: Color::TRANSPARENT,
-            scroller: scrollable::Scroller {
-                color: ACCENT,
-                border_radius: 0.,
-                border_width: 0.,
-                border_color: Color::TRANSPARENT,
+    fn active(&self, _style: &Self::Style) -> iced::widget::scrollable::Appearance {
+        iced::widget::scrollable::Appearance {
+            container: container::Appearance {
+                background: Some(Color::from_rgb8(0x36, 0x39, 0x3F).into()),
+                text_color: Color::WHITE.into(),
+                ..Default::default()
             },
+            scrollbar: scrollable::Scrollbar {
+                background: None,
+                border: Border {
+                    radius: Radius::from(2.),
+                    width: 0.,
+                    color: Color::TRANSPARENT,
+                },
+                scroller: scrollable::Scroller {
+                    color: ACCENT,
+                    border: Border {
+                        radius: Radius::from(0.),
+                        width: 0.,
+                        color: Color::TRANSPARENT,
+                    },
+                },
+            },
+            gap: None,
         }
     }
 
-    fn hovered(&self, style: &Self::Style, is_mouse_over_scrollbar: bool) -> scrollable::Scrollbar {
+    fn hovered(
+        &self,
+        style: &Self::Style,
+        is_mouse_over_scrollbar: bool,
+    ) -> iced::widget::scrollable::Appearance {
         if is_mouse_over_scrollbar {
-            scrollable::Scrollbar {
-                scroller: scrollable::Scroller {
-                    color: HOVERED,
-                    border_width: 1.,
-                    ..self.active(style).scroller
+            iced::widget::scrollable::Appearance {
+                scrollbar: scrollable::Scrollbar {
+                    scroller: scrollable::Scroller {
+                        color: HOVERED,
+                        border: Border {
+                            width: 1.,
+                            ..Default::default()
+                        },
+                    },
+                    ..self.active(style).scrollbar
                 },
                 ..self.active(style)
             }
         } else {
-            scrollable::Scrollbar {
-                scroller: scrollable::Scroller {
-                    color: HOVERED,
-                    ..self.active(style).scroller
+            iced::widget::scrollable::Appearance {
+                scrollbar: scrollable::Scrollbar {
+                    scroller: scrollable::Scroller {
+                        color: HOVERED,
+                        ..self.active(style).scrollbar.scroller
+                    },
+                    ..self.active(style).scrollbar
                 },
                 ..self.active(style)
             }
@@ -356,9 +404,11 @@ impl menu::StyleSheet for Theme {
         menu::Appearance {
             text_color: Color::WHITE,
             background: Background::Color(ACCENT),
-            border_width: 0.,
-            border_radius: 0.,
-            border_color: Color::TRANSPARENT,
+            border: Border {
+                width: 0.,
+                radius: Radius::from(0.),
+                color: Color::TRANSPARENT,
+            },
             selected_text_color: Color::BLACK,
             selected_background: Background::Color(ACTIVE),
         }

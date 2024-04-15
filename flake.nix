@@ -26,6 +26,9 @@
         pkgs = import nixpkgs { inherit system; overlays = [ rust-overlay.overlays.default ]; };
 
         libPath =  with pkgs; lib.makeLibraryPath [
+          cairo
+          gdk-pixbuf
+          pango
           vulkan-loader
           libGL
           wayland
@@ -46,6 +49,10 @@
         ];
 
         buildInputs = with pkgs; [
+          cairo
+          gdk-pixbuf
+          gtk3
+          pango
           expat
           pkg-config
 
