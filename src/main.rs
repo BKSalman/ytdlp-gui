@@ -59,7 +59,7 @@ fn main() -> iced::Result {
         id: Some(String::from("ytdlp-gui")),
         window: window::Settings {
             size: iced::Size::new(600., 360.),
-            resizable: false,
+            resizable: true,
             exit_on_close_request: false,
             ..Default::default()
         },
