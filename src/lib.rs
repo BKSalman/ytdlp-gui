@@ -65,6 +65,7 @@ pub enum Message {
     Command(command::Message),
     UpdateWindowSize(iced::Size),
     IcedEvent(Event),
+    FontLoaded(Result<(), iced::font::Error>),
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -318,7 +319,7 @@ impl Application for YtGUI {
                 window_width: 0.,
                 is_choosing_folder: false,
             },
-            iced::Command::none(),
+            iced::font::load(iced_aw::BOOTSTRAP_FONT_BYTES).map(Message::FontLoaded),
         )
     }
 
@@ -490,6 +491,7 @@ impl Application for YtGUI {
                 }
             }
             Message::None => {}
+            Message::FontLoaded(_) => {}
         }
 
         iced::Command::none()
