@@ -65,10 +65,26 @@ impl Command {
             r#"after_video:__{"type": "end_of_video"}"#,
         ];
 
+        // reference: https://github.com/yt-dlp/yt-dlp/blob/351dc0bc334c4e1b5f00c152818c3ec0ed71f788/yt_dlp/YoutubeDL.py#L364
+        // NOTE: sometimes some fields are missing like:
+        // - total_bytes: Size of the whole file, None if unknown
+        // - total_bytes_estimate: Guess of the eventual file size, None if unavailable.
+        // - eta: The estimated time in seconds, None if unknown
+        // - speed: The download speed in bytes/second, None if unknown
+        // we need to compensate for it as much as possible (sometimes we can't)
+
+        // format progress as a simple json
+        let template = concat!(
+            r#"__{"type": "downloading", "video_title": "%(info.title)s","#,
+            r#""eta": %(progress.eta)s, "downloaded_bytes": %(progress.downloaded_bytes)s,"#,
+            r#""total_bytes": %(progress.total_bytes)s, "total_bytes_estimate": %(progress.total_bytes_estimate)s,"#,
+            r#""elapsed": %(progress.elapsed)s, "speed": %(progress.speed)s, "playlist_count": %(info.playlist_count)s,"#,
+            r#""playlist_index": %(info.playlist_index)s }"#
+        );
+
         let progess_template = [
             "--progress-template",
-            // format progress as a simple json
-            r#"__{"type": "downloading", "video_title": "%(info.title)s", "eta": %(progress.eta)s, "downloaded_bytes": %(progress.downloaded_bytes)s, "total_bytes": %(progress.total_bytes)s, "elapsed": %(progress.elapsed)s, "speed": %(progress.speed)s, "playlist_count": %(info.playlist_count)s, "playlist_index": %(info.playlist_index)s }"#,
+            template,
             // "--progress-template",
             // r#"postprocess:__{"type": "post_processing", "status": "%(progress.status)s"}"#,
         ];
@@ -93,11 +109,11 @@ impl Command {
         self.shared_child = Some(Arc::new(shared_child));
 
         let Some(child) = self.shared_child.clone() else {
-                        *show_modal = true;
-                        *modal_body = String::from("Something went wrong");
-                        tracing::error!("No child process");
-                        return;
-                    };
+            *show_modal = true;
+            *modal_body = String::from("Something went wrong");
+            tracing::error!("No child process");
+            return;
+        };
 
         *show_modal = true;
         *modal_body = String::from("Initializing...");
@@ -129,8 +145,8 @@ impl Command {
                 let mut buffer = vec![];
                 loop {
                     let Ok(bytes_read) = reader.read_until(b'\r', &mut buffer) else {
-                                        panic!("failed to read buffer");
-                                };
+                        panic!("failed to read buffer");
+                    };
 
                     if bytes_read == 0 {
                         break;

@@ -387,12 +387,15 @@ impl Application for YtGUI {
                             eta,
                             downloaded_bytes,
                             total_bytes,
+                            total_bytes_estimate,
                             elapsed: _,
                             speed,
                             playlist_count,
                             playlist_index,
                         } => {
-                            self.progress = (downloaded_bytes / total_bytes) * 100.;
+                            self.progress = (downloaded_bytes
+                                / total_bytes.unwrap_or(total_bytes_estimate.unwrap_or(0.)))
+                                * 100.;
                             if let Some((playlist_count, playlist_index)) =
                                 playlist_count.zip(playlist_index)
                             {
@@ -404,7 +407,7 @@ impl Application for YtGUI {
 
                             // `eta as i64` rounds it
                             // for examlpe: 12.368520936129604 as i64 = 12
-                            let eta = chrono::Duration::seconds(eta as i64);
+                            let eta = chrono::Duration::seconds(eta.unwrap_or(0.) as i64);
 
                             let downloaded_megabytes = downloaded_bytes / 1024_f32.powi(2);
                             let total_downloaded = if downloaded_megabytes > 1024. {
@@ -415,7 +418,7 @@ impl Application for YtGUI {
 
                             self.modal_body = format!(
                                 "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins:02}:{eta_secs:02}",
-                                speed = speed / 1024_f32.powi(2),
+                                speed = speed.unwrap_or(0.) / 1024_f32.powi(2),
                                 // percent = if self.progress.is_infinite() {
                                 //     100.
                                 // } else {
