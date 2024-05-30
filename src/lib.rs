@@ -1,19 +1,23 @@
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{fs, io};
 
+#[cfg(feature = "explain")]
+use iced::Color;
+
 use chrono::Local;
+use iced::window::Action;
 use iced::{executor, widget::container};
 use iced::{
     futures::channel::mpsc::UnboundedSender,
     widget::{button, checkbox, column, progress_bar, row, text, text_input},
     Application, Length, Subscription,
 };
+use iced::{window, Event};
 use iced_aw::Card;
-use iced_native::subscription;
 
-use native_dialog::FileDialog;
+use rfd::AsyncFileDialog;
 use serde::{Deserialize, Serialize};
 
 pub mod command;
@@ -52,13 +56,15 @@ pub enum Message {
     SelectedResolution(VideoResolution),
     SelectedAudioFormat(AudioFormat),
     SelectedAudioQuality(AudioQuality),
-    SelectFolder,
+    SelectDownloadFolder,
+    SelectedDownloadFolder(Option<PathBuf>),
     SelectFolderTextInput(String),
-    SelectTab(usize),
+    SelectTab(Tab),
     ProgressEvent(String),
     Ready(UnboundedSender<String>),
     Command(command::Message),
-    IcedEvent(iced_native::Event),
+    IcedEvent(Event),
+    FontLoaded(Result<(), iced::font::Error>),
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -80,19 +86,28 @@ impl Config {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Tab {
+    Video,
+    Audio,
+}
+
 pub struct YtGUI {
     download_link: String,
     is_playlist: bool,
     config: Config,
 
     show_modal: bool,
-    active_tab: usize,
+    active_tab: Tab,
     modal_body: String,
     modal_title: String,
+    is_choosing_folder: bool,
 
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
     progress: f32,
+    window_height: f32,
+    window_width: f32,
 }
 
 impl YtGUI {
@@ -122,9 +137,7 @@ impl YtGUI {
                 args.push(&link);
 
                 match self.active_tab {
-                    0 => {
-                        // Video tab
-
+                    Tab::Video => {
                         args.push("-S");
 
                         args.push(self.config.options.video_resolution.options());
@@ -139,7 +152,7 @@ impl YtGUI {
 
                         tracing::info!("{args:#?}");
                     }
-                    1 => {
+                    Tab::Audio => {
                         // Audio tab
 
                         // Extract audio from Youtube video
@@ -151,7 +164,6 @@ impl YtGUI {
                         args.push("--audio-quality");
                         args.push(self.config.options.audio_quality.options());
                     }
-                    _ => {}
                 }
 
                 let playlist_options =
@@ -191,8 +203,8 @@ impl YtGUI {
                     }
                 };
                 self.progress = 0.;
-                self.modal_body = String::from("Already exists");
                 self.modal_title = String::from("Error");
+                self.modal_body = String::from("Already exists");
             }
             command::Message::PlaylistNotChecked => {
                 match self.command.kill() {
@@ -204,8 +216,8 @@ impl YtGUI {
                     }
                 };
                 self.progress = 0.;
-                self.modal_body = String::from("Playlist checkbox not checked!");
                 self.modal_title = String::from("Error");
+                self.modal_body = String::from("Playlist checkbox not checked!");
             }
             command::Message::Finished => {
                 match self.command.kill() {
@@ -240,6 +252,7 @@ impl YtGUI {
             }
         }
     }
+
     fn log_download(&self) {
         let downloads_log_path = dirs::cache_dir()
             .expect("config directory")
@@ -257,16 +270,15 @@ impl YtGUI {
             "{}::{}::{}::{}",
             Local::now(),
             self.download_link,
-            if self.active_tab == 1 {
-                format!(
+            match self.active_tab {
+                Tab::Video => format!(
                     "{:?}:{:?}",
                     self.config.options.video_resolution, self.config.options.video_format
-                )
-            } else {
-                format!(
+                ),
+                Tab::Audio => format!(
                     "{:?}:{:?}",
                     self.config.options.audio_quality, self.config.options.audio_format
-                )
+                ),
             },
             self.config
                 .download_folder
@@ -295,15 +307,18 @@ impl Application for YtGUI {
                 config: flags,
 
                 show_modal: false,
-                active_tab: 0,
+                active_tab: Tab::Video,
                 modal_body: String::default(),
                 modal_title: String::from("Downloading"),
 
                 sender: None,
                 command: command::Command::default(),
                 progress: 0.,
+                window_height: 0.,
+                window_width: 0.,
+                is_choosing_folder: false,
             },
-            iced::Command::none(),
+            iced::font::load(iced_aw::BOOTSTRAP_FONT_BYTES).map(Message::FontLoaded),
         )
     }
 
@@ -328,27 +343,34 @@ impl Application for YtGUI {
             Message::SelectedVideoFormat(format) => {
                 self.config.options.video_format = format;
             }
-            Message::SelectFolder => {
-                if let Ok(Some(path)) = FileDialog::new()
-                    .set_location(
-                        &self
-                            .config
-                            .download_folder
-                            .clone()
-                            .unwrap_or_else(|| "~/Videos".into()),
-                    )
-                    .show_open_single_dir()
-                {
+            Message::SelectDownloadFolder => {
+                if !self.is_choosing_folder {
+                    self.is_choosing_folder = true;
+
+                    return iced::Command::perform(
+                        choose_folder(
+                            self.config
+                                .download_folder
+                                .clone()
+                                .unwrap_or_else(|| "~/Videos".into()),
+                        ),
+                        Message::SelectedDownloadFolder,
+                    );
+                }
+            }
+            Message::SelectedDownloadFolder(folder) => {
+                if let Some(path) = folder {
                     self.config.download_folder = Some(path);
                 }
+                self.is_choosing_folder = false;
             }
             Message::SelectFolderTextInput(folder_string) => {
                 let path = PathBuf::from(folder_string);
 
                 self.config.download_folder = Some(path);
             }
-            Message::SelectTab(tab_number) => {
-                self.active_tab = tab_number;
+            Message::SelectTab(selected_tab) => {
+                self.active_tab = selected_tab;
             }
             Message::SelectedAudioFormat(format) => {
                 self.config.options.audio_format = format;
@@ -364,12 +386,15 @@ impl Application for YtGUI {
                             eta,
                             downloaded_bytes,
                             total_bytes,
+                            total_bytes_estimate,
                             elapsed: _,
                             speed,
                             playlist_count,
                             playlist_index,
                         } => {
-                            self.progress = (downloaded_bytes / total_bytes) * 100.;
+                            self.progress = (downloaded_bytes
+                                / total_bytes.unwrap_or(total_bytes_estimate.unwrap_or(0.)))
+                                * 100.;
                             if let Some((playlist_count, playlist_index)) =
                                 playlist_count.zip(playlist_index)
                             {
@@ -381,7 +406,7 @@ impl Application for YtGUI {
 
                             // `eta as i64` rounds it
                             // for examlpe: 12.368520936129604 as i64 = 12
-                            let eta = chrono::Duration::seconds(eta as i64);
+                            let eta = chrono::Duration::seconds(eta.unwrap_or(0.) as i64);
 
                             let downloaded_megabytes = downloaded_bytes / 1024_f32.powi(2);
                             let total_downloaded = if downloaded_megabytes > 1024. {
@@ -392,7 +417,7 @@ impl Application for YtGUI {
 
                             self.modal_body = format!(
                                 "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins:02}:{eta_secs:02}",
-                                speed = speed / 1024_f32.powi(2),
+                                speed = speed.unwrap_or(0.) / 1024_f32.powi(2),
                                 // percent = if self.progress.is_infinite() {
                                 //     100.
                                 // } else {
@@ -447,18 +472,26 @@ impl Application for YtGUI {
                 self.sender = Some(sender);
             }
             Message::IcedEvent(event) => {
-                if let iced_native::Event::Window(iced_native::window::Event::CloseRequested) =
-                    event
-                {
-                    if self.command.kill().is_ok() {
-                        tracing::debug!("killed child process");
+                if let Event::Window(id, window_event) = event {
+                    match window_event {
+                        window::Event::CloseRequested => {
+                            if self.command.kill().is_ok() {
+                                tracing::debug!("killed child process");
+                            }
+                            return iced::Command::single(iced_runtime::command::Action::Window(
+                                Action::Close(id),
+                            ));
+                        }
+                        window::Event::Resized { width, height } => {
+                            self.window_width = width as f32;
+                            self.window_height = height as f32;
+                        }
+                        _ => {}
                     }
-                    return iced::Command::single(iced_native::command::Action::Window(
-                        iced_native::window::Action::Close,
-                    ));
                 }
             }
             Message::None => {}
+            Message::FontLoaded(_) => {}
         }
 
         iced::Command::none()
@@ -475,26 +508,28 @@ impl Application for YtGUI {
                     )))
                     .size(FONT_SIZE)
                     .width(Length::Fill),
-                checkbox("Playlist", self.is_playlist, Message::TogglePlaylist)
+                checkbox("Playlist", self.is_playlist).on_toggle(Message::TogglePlaylist)
             ]
             .spacing(7)
             .align_items(iced::Alignment::Center),
-            Tabs::new(self.active_tab, Message::SelectTab)
+            Tabs::new(Message::SelectTab)
                 .push(
+                    Tab::Video,
                     iced_aw::TabLabel::Text("Video".to_string()),
                     column![
-                        Options::video_resolutions(self.config.options.video_resolution)
-                            .width(Length::Fill),
+                        Options::video_resolutions(self.config.options.video_resolution),
                         Options::video_formats(self.config.options.video_format),
                     ],
                 )
                 .push(
+                    Tab::Audio,
                     iced_aw::TabLabel::Text("Audio".to_string()),
                     column![
                         Options::audio_qualities(self.config.options.audio_quality),
                         Options::audio_formats(self.config.options.audio_format),
                     ],
                 )
+                .set_active_tab(&self.active_tab)
                 .height(Length::Shrink)
                 .width(Length::FillPortion(1))
                 .tab_bar_width(Length::FillPortion(1)),
@@ -509,7 +544,7 @@ impl Application for YtGUI {
                         .to_string_lossy()
                 )
                 .on_input(Message::SelectFolderTextInput),
-                button("Browse").on_press(Message::SelectFolder),
+                button("Browse").on_press(Message::SelectDownloadFolder),
             ]
             .spacing(SPACING)
             .align_items(iced::Alignment::Center),
@@ -525,27 +560,32 @@ impl Application for YtGUI {
         .padding(20)
         .into();
 
-        let content = Modal::new(self.show_modal, content, || {
-            Card::new(
-                text(&*self.modal_title)
-                    .horizontal_alignment(iced::alignment::Horizontal::Center)
-                    .vertical_alignment(iced::alignment::Vertical::Center),
-                column![
-                    text(self.modal_body.clone())
+        let content = Modal::new(
+            content,
+            self.show_modal.then_some(
+                Card::new(
+                    text(self.modal_title.as_str())
                         .horizontal_alignment(iced::alignment::Horizontal::Center)
-                        .height(Length::Fill),
-                    row![progress_bar(0.0..=100., self.progress)]
-                ]
-                .align_items(iced::Alignment::Center),
-            )
-            .width(Length::Fill)
-            .max_height(70.)
-            .max_width(300.)
-            .on_close(Message::Command(command::Message::Stop))
-            .into()
-        });
+                        .vertical_alignment(iced::alignment::Vertical::Center),
+                    column![
+                        text(self.modal_body.as_str())
+                            .horizontal_alignment(iced::alignment::Horizontal::Center)
+                            .height(Length::Fill),
+                        row![progress_bar(0.0..=100., self.progress)]
+                    ]
+                    .align_items(iced::Alignment::Center),
+                )
+                .width(Length::Fill)
+                .max_height(self.window_height / 2.)
+                .max_width(self.window_width / 2.)
+                .on_close(Message::Command(command::Message::Stop)),
+            ),
+        );
 
-        // let content = content.explain(Color::BLACK);
+        #[cfg(feature = "explain")]
+        let content: crate::widgets::Element<Message> = content.into();
+        #[cfg(feature = "explain")]
+        let content: crate::widgets::Element<Message> = content.explain(Color::BLACK);
 
         container(content)
             .height(Length::Fill)
@@ -555,9 +595,17 @@ impl Application for YtGUI {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        let iced_events = subscription::events().map(Message::IcedEvent);
+        let iced_events = iced::event::listen().map(Message::IcedEvent);
         Subscription::batch(vec![bind(), iced_events])
     }
+}
+
+async fn choose_folder(starting_dir: impl AsRef<Path>) -> Option<PathBuf> {
+    AsyncFileDialog::new()
+        .set_directory(starting_dir)
+        .pick_folder()
+        .await
+        .map(|f| f.path().to_path_buf())
 }
 
 pub fn logging() {

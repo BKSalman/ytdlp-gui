@@ -68,11 +68,12 @@ pub enum Progress {
     },
     Downloading {
         video_title: String,
-        eta: f64,
+        eta: Option<f64>,
         downloaded_bytes: f32,
-        total_bytes: f32,
+        total_bytes: Option<f32>,
+        total_bytes_estimate: Option<f32>,
         elapsed: f32,
-        speed: f32,
+        speed: Option<f32>,
         playlist_count: Option<i32>,
         playlist_index: Option<i32>,
     },
@@ -87,9 +88,7 @@ pub enum Progress {
 pub fn parse_progress(input: String) -> Vec<Progress> {
     input.lines().filter_map(|line| {
         if let Some(progress) = line.strip_prefix("__") {
-            let progress = progress.replace(r#", "playlist_count": NA, "#, r#""#);
-            let progress = progress.replace(r#""playlist_index": NA"#, r#""#);
-            let progress = progress.replace("NA", "0");
+            let progress = progress.replace("NA", "null");
 
             Some(
                 serde_json::from_str::<Progress>(&progress).unwrap_or_else(|e| {

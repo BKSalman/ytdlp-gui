@@ -26,6 +26,9 @@
         pkgs = import nixpkgs { inherit system; overlays = [ rust-overlay.overlays.default ]; };
 
         libPath =  with pkgs; lib.makeLibraryPath [
+          cairo
+          gdk-pixbuf
+          pango
           vulkan-loader
           libGL
           wayland
@@ -46,6 +49,10 @@
         ];
 
         buildInputs = with pkgs; [
+          cairo
+          gdk-pixbuf
+          gtk3
+          pango
           expat
           pkg-config
 
@@ -111,6 +118,7 @@
             libsForQt5.kdialog
           ];
           LD_LIBRARY_PATH = "${libPath}";
+          XDG_DATA_DIRS="${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS";
         };
       }) // {
         overlay = final: prev: {
