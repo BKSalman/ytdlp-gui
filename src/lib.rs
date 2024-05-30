@@ -63,7 +63,6 @@ pub enum Message {
     ProgressEvent(String),
     Ready(UnboundedSender<String>),
     Command(command::Message),
-    UpdateWindowSize(iced::Size),
     IcedEvent(Event),
     FontLoaded(Result<(), iced::font::Error>),
 }
@@ -472,10 +471,6 @@ impl Application for YtGUI {
             Message::Ready(sender) => {
                 self.sender = Some(sender);
             }
-            Message::UpdateWindowSize(size) => {
-                self.window_width = size.width;
-                self.window_height = size.height;
-            }
             Message::IcedEvent(event) => {
                 if let Event::Window(id, window_event) = event {
                     match window_event {
@@ -487,9 +482,11 @@ impl Application for YtGUI {
                                 Action::Close(id),
                             ));
                         }
-                        _ => {
-                            return window::fetch_size(id, Message::UpdateWindowSize);
+                        window::Event::Resized { width, height } => {
+                            self.window_width = width as f32;
+                            self.window_height = height as f32;
                         }
+                        _ => {}
                     }
                 }
             }
