@@ -1490,6 +1490,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "iced_table"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4347f00d6cd7e5e3b26a9ac0bedd46f336b5eaa4be9b46256d1c8009562f6b51"
+dependencies = [
+ "iced_core",
+ "iced_style",
+ "iced_widget",
+]
+
+[[package]]
 name = "iced_tiny_skia"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4138,6 +4149,7 @@ dependencies = [
  "iced",
  "iced_aw",
  "iced_runtime",
+ "iced_table",
  "rfd",
  "serde",
  "serde_json",

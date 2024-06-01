@@ -1,6 +1,6 @@
 use crate::{theme::Theme, Tab};
 
-pub type Element<'a, Message> = iced::Element<'a, Message, Theme>;
+pub type Element<'a, Message> = iced::Element<'a, Message, Theme, iced::Renderer>;
 
 pub type Column<'a, Message> = iced::widget::Column<'a, Message, Theme>;
 

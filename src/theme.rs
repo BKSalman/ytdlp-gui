@@ -414,3 +414,39 @@ impl menu::StyleSheet for Theme {
         }
     }
 }
+
+impl iced_table::StyleSheet for Theme {
+    type Style = ();
+
+    fn header(&self, style: &Self::Style) -> container::Appearance {
+        container::Appearance {
+            background: Some(Color::from_rgb8(0x36, 0x39, 0x3F).into()),
+            text_color: Color::WHITE.into(),
+            ..Default::default()
+        }
+    }
+
+    fn footer(&self, style: &Self::Style) -> container::Appearance {
+        container::Appearance {
+            background: Some(Color::from_rgb8(0x36, 0x39, 0x3F).into()),
+            text_color: Color::WHITE.into(),
+            ..Default::default()
+        }
+    }
+
+    fn row(&self, style: &Self::Style, index: usize) -> container::Appearance {
+        container::Appearance {
+            background: Some(Color::from_rgb8(0x36, 0x39, 0x3F).into()),
+            text_color: Color::WHITE.into(),
+            ..Default::default()
+        }
+    }
+
+    fn divider(&self, style: &Self::Style, hovered: bool) -> container::Appearance {
+        container::Appearance {
+            background: Some(Color::from_rgb8(0x36, 0x39, 0x3F).into()),
+            text_color: Color::WHITE.into(),
+            ..Default::default()
+        }
+    }
+}

@@ -3,6 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
+use download_queue::QueueList;
 #[cfg(feature = "explain")]
 use iced::Color;
 
@@ -21,6 +22,7 @@ use rfd::AsyncFileDialog;
 use serde::{Deserialize, Serialize};
 
 pub mod command;
+pub mod download_queue;
 pub mod media_options;
 pub mod progress;
 pub mod theme;
@@ -36,6 +38,7 @@ use tracing_subscriber::EnvFilter;
 use url::Url;
 use widgets::{Modal, Tabs};
 
+use crate::download_queue::QueueVideo;
 use crate::media_options::{playlist_options, Options};
 use crate::media_options::{AudioFormat, AudioQuality, VideoFormat, VideoResolution};
 use crate::progress::{bind, parse_progress, Progress};
@@ -63,6 +66,8 @@ pub enum Message {
     ProgressEvent(String),
     Ready(UnboundedSender<String>),
     Command(command::Message),
+    ToggleQueueList,
+    QueueList(download_queue::Message),
     IcedEvent(Event),
     FontLoaded(Result<(), iced::font::Error>),
 }
@@ -108,6 +113,8 @@ pub struct YtGUI {
     progress: f32,
     window_height: f32,
     window_width: f32,
+    queue_list: QueueList,
+    show_queue_list: bool,
 }
 
 impl YtGUI {
@@ -138,31 +145,28 @@ impl YtGUI {
 
                 match self.active_tab {
                     Tab::Video => {
-                        args.push("-S");
-
-                        args.push(self.config.options.video_resolution.options());
-
-                        // after downloading a video with a specific format
-                        // yt-dlp sometimes downloads the audio and video seprately
-                        // then merge them in a different format
-                        // this enforces the chosen format by the user
-                        args.push("--remux-video");
-
-                        args.push(self.config.options.video_format.options());
+                        args.extend([
+                            "-S",
+                            self.config.options.video_resolution.options(),
+                            // after downloading a video with a specific format
+                            // yt-dlp sometimes downloads the audio and video seprately
+                            // then merge them in a different format
+                            // this enforces the chosen format by the user
+                            "--remux-video",
+                            self.config.options.video_format.options(),
+                        ]);
 
                         tracing::info!("{args:#?}");
                     }
                     Tab::Audio => {
-                        // Audio tab
-
-                        // Extract audio from Youtube video
-                        args.push("-x");
-
-                        args.push("--audio-format");
-                        args.push(self.config.options.audio_format.options());
-
-                        args.push("--audio-quality");
-                        args.push(self.config.options.audio_quality.options());
+                        args.extend([
+                            // Extract audio from Youtube video
+                            "-x",
+                            "--audio-format",
+                            self.config.options.audio_format.options(),
+                            "--audio-quality",
+                            self.config.options.audio_quality.options(),
+                        ]);
                     }
                 }
 
@@ -300,6 +304,13 @@ impl Application for YtGUI {
     fn new(flags: Self::Flags) -> (Self, iced::Command<Message>) {
         tracing::info!("config loaded: {flags:#?}");
 
+        let queue = vec![
+            QueueVideo::new(String::from("lmao"), "/".into()),
+            QueueVideo::new(String::from("lmfao"), "/".into()),
+            QueueVideo::new(String::from("xd"), "/".into()),
+            QueueVideo::new(String::from("wow"), "/".into()),
+        ];
+
         (
             Self {
                 download_link: String::default(),
@@ -317,6 +328,9 @@ impl Application for YtGUI {
                 window_height: 0.,
                 window_width: 0.,
                 is_choosing_folder: false,
+                show_queue_list: false,
+                // FIXME: load queue from cache file
+                queue_list: QueueList::new(queue),
             },
             iced::font::load(iced_aw::BOOTSTRAP_FONT_BYTES).map(Message::FontLoaded),
         )
@@ -490,8 +504,14 @@ impl Application for YtGUI {
                     }
                 }
             }
+            Message::ToggleQueueList => {
+                self.show_queue_list = !self.show_queue_list;
+            }
             Message::None => {}
             Message::FontLoaded(_) => {}
+            Message::QueueList(m) => {
+                return self.queue_list.update(m);
+            }
         }
 
         iced::Command::none()
@@ -552,7 +572,15 @@ impl Application for YtGUI {
                 button("Download").on_press(Message::Command(command::Message::Run(
                     self.download_link.clone(),
                 ))),
+                button("Queue").on_press(Message::ToggleQueueList),
             ]
+            .spacing(SPACING)
+            .align_items(iced::Alignment::Center),
+            if self.show_queue_list {
+                row![self.queue_list.view().map(Message::QueueList)]
+            } else {
+                row![]
+            }
         ]
         .width(Length::Fill)
         .align_items(iced::Alignment::Center)
