@@ -14,7 +14,7 @@ use iced::{
     widget::{button, checkbox, column, progress_bar, row, text, text_input},
     Application, Length, Subscription,
 };
-use iced::{window, Event};
+use iced::{window, Event, Point};
 use iced_aw::Card;
 
 use rfd::AsyncFileDialog;
@@ -67,10 +67,19 @@ pub enum Message {
     FontLoaded(Result<(), iced::font::Error>),
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct WindowPosition {
+    pub x: f32,
+    pub y: f32,
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Config {
     bin_dir: Option<PathBuf>,
     download_folder: Option<PathBuf>,
+    #[serde(default)]
+    pub save_window_position: bool,
+    pub window_position: Option<WindowPosition>,
     options: Options,
 }
 
@@ -108,6 +117,7 @@ pub struct YtGUI {
     progress: f32,
     window_height: f32,
     window_width: f32,
+    window_pos: Point,
 }
 
 impl YtGUI {
@@ -317,6 +327,7 @@ impl Application for YtGUI {
                 window_height: 0.,
                 window_width: 0.,
                 is_choosing_folder: false,
+                window_pos: Point::default(),
             },
             iced::font::load(iced_aw::BOOTSTRAP_FONT_BYTES).map(Message::FontLoaded),
         )
@@ -478,6 +489,13 @@ impl Application for YtGUI {
                             if self.command.kill().is_ok() {
                                 tracing::debug!("killed child process");
                             }
+                            self.config.window_position = Some(WindowPosition {
+                                x: self.window_pos.x,
+                                y: self.window_pos.y,
+                            });
+                            if let Err(e) = self.config.update_config_file() {
+                                tracing::error!("Failed to update config file: {e}");
+                            }
                             return iced::Command::single(iced_runtime::command::Action::Window(
                                 Action::Close(id),
                             ));
@@ -485,6 +503,9 @@ impl Application for YtGUI {
                         window::Event::Resized { width, height } => {
                             self.window_width = width as f32;
                             self.window_height = height as f32;
+                        }
+                        window::Event::Moved { x, y } if self.config.save_window_position => {
+                            self.window_pos = Point::new(x as f32, y as f32);
                         }
                         _ => {}
                     }

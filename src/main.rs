@@ -1,6 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use iced::{window, Application, Settings};
+use iced::{
+    window::{self, Position},
+    Application, Point, Settings,
+};
 use ytdlp_gui::{git_hash, logging, Config, YtGUI};
 
 fn main() -> iced::Result {
@@ -55,12 +58,23 @@ fn main() -> iced::Result {
         config
     });
 
+    let position = if config.save_window_position {
+        if let Some(window_pos) = &config.window_position {
+            Position::Specific(Point::new(window_pos.x, window_pos.y))
+        } else {
+            Position::default()
+        }
+    } else {
+        Position::default()
+    };
+
     let settings = Settings {
         id: Some(String::from("ytdlp-gui")),
         window: window::Settings {
             size: iced::Size::new(600., 360.),
             resizable: true,
             exit_on_close_request: false,
+            position,
             ..Default::default()
         },
         flags: config,
