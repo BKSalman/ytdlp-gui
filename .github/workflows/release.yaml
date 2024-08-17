@@ -40,7 +40,7 @@ jobs:
           shared-key: "rust-${{ matrix.build }}-test"
 
       - name: Package Linux
-        run: cargo mantask package_linux_all
+        run: cargo xtask package_linux_all
 
       - name: Upload assets to release
         uses: xresloader/upload-to-github-release@v1
@@ -79,7 +79,7 @@ jobs:
           shared-key: "rust-${{ matrix.build }}-test"
 
       - name: Packages script
-        run: cargo mantask package_windows
+        run: cargo xtask package_windows
 
       - name: Upload assets to release
         uses: xresloader/upload-to-github-release@v1

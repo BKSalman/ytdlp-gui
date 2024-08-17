@@ -6,7 +6,7 @@ use std::io::Write;
 use std::str::FromStr;
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
-use mantask::{cargo, git, unzip, zip_dir, CommandExt};
+use xtask::{cargo, git, unzip, zip_dir, CommandExt};
 
 #[derive(EnumString, EnumIter, Display, Debug, PartialEq)]
 #[strum(serialize_all = "snake_case")]
@@ -204,7 +204,7 @@ fn package_windows() -> anyhow::Result<()> {
 
 fn package_aur(rel: Option<u8>) -> anyhow::Result<()> {
     let mut ytdlp_gui_path = std::env::current_dir()?;
-    if ytdlp_gui_path.ends_with("mantask") {
+    if ytdlp_gui_path.ends_with("xtask") {
         ytdlp_gui_path.pop();
     }
     let metadata = MetadataCommand::new()
@@ -282,7 +282,7 @@ fn package_aur(rel: Option<u8>) -> anyhow::Result<()> {
 
 fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
     let mut ytdlp_gui_path = std::env::current_dir()?;
-    if ytdlp_gui_path.ends_with("mantask") {
+    if ytdlp_gui_path.ends_with("xtask") {
         ytdlp_gui_path.pop();
     }
 

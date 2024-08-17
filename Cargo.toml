@@ -13,7 +13,7 @@ authors = ["Salman"]
 
 [workspace]
 members = [
-  "mantask"
+  "xtask"
 ]
 
 [dependencies]

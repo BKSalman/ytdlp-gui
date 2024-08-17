@@ -1,2 +1,2 @@
 [alias]
-mantask = "run -p mantask --"
+xtask = "run -p xtask --"
