@@ -39,6 +39,9 @@ jobs:
         with:
           shared-key: "rust-${{ matrix.build }}-test"
 
+      - name: Install Linux dependencies
+        run: sudo apt install libatk1.0-dev
+
       - name: Package Linux
         run: cargo xtask package_linux_all
 
