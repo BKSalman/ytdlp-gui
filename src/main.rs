@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertion), windows_subsystem = "windows")]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use iced::{window, Application, Settings};
 use ytdlp_gui::{git_hash, logging, Config, YtGUI};
