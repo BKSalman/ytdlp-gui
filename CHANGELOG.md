@@ -6,6 +6,8 @@
 - Minor: The download modal now resizes with the window (taking half the width and the height)
 - Minor: made folder dialog not block the GUI thread
 - Dev: Replaced native_dialog with rfd
+- Dev: Update dependencies to be able to compile on rust v1.80
+- Dev: Fix Linux CI
 
 ## 1.0.2
 
