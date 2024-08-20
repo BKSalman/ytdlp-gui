@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- Minor: Added and option to the config file that saves the window positions and restores it on next launch
+
 ## 1.1.0
 
 - Major: Updated `iced` to 0.12.1
