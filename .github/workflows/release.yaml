@@ -40,7 +40,10 @@ jobs:
           shared-key: "rust-${{ matrix.build }}-test"
 
       - name: Install Linux dependencies
-        run: sudo apt install libatk1.0-dev
+        run: |
+          sudo apt update
+          sudo apt upgrade
+          sudo apt install libatk1.0-dev libgtk-3-dev libcairo2-dev libpango1.0-dev libexpat1-dev
 
       - name: Package Linux
         run: cargo xtask package_linux_all
