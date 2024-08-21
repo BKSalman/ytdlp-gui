@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Context};
 use cargo_metadata::MetadataCommand;
 use sha2::Digest;
-use std::fs::File;
-use std::io::Write;
+use std::io::{BufRead, Write};
 use std::str::FromStr;
+use std::{fs::File, process::ExitCode};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 use xtask::{cargo, git, unzip, zip_dir, CommandExt};
@@ -20,7 +20,7 @@ enum Task {
     PublishAUR,
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> ExitCode {
     let flags = xflags::parse_or_exit! {
         /// List all available tasks.
         optional -l,--list
@@ -34,28 +34,34 @@ fn main() -> anyhow::Result<()> {
     };
 
     if !flags.list && flags.task.is_none() {
-        return Err(anyhow!(
-            "No arguments were passed\nuse --help to see options"
-        ));
+        eprintln!("No arguments were passed\nuse --help to see options");
+        return ExitCode::FAILURE;
     }
 
     if let Some(task) = flags.task {
-        let task = Task::from_str(&task).map_err(|_| anyhow!("Invalid task"))?;
+        let Ok(task) = Task::from_str(&task) else {
+            eprintln!("Invalid task");
+            return ExitCode::FAILURE;
+        };
 
-        std::fs::create_dir_all("packages")?;
+        if let Err(e) = std::fs::create_dir_all("packages") {
+            eprintln!("Failed to create packages directory: {e}");
+            return ExitCode::FAILURE;
+        }
 
-        match task {
-            Task::PackageWindows => package_windows()?,
-            Task::PackageRPM => {
-                package_rpm()?;
-            }
-            Task::PackageDEB => package_deb()?,
-            Task::PackageLinux => {
-                package_linux()?;
-            }
-            Task::PackageLinuxAll => package_linux_all()?,
-            Task::PackageAUR => package_aur(flags.rel)?,
-            Task::PublishAUR => publish_aur(flags.message)?,
+        let res = match task {
+            Task::PackageWindows => package_windows(),
+            Task::PackageRPM => package_rpm(),
+            Task::PackageDEB => package_deb(),
+            Task::PackageLinux => package_linux(),
+            Task::PackageLinuxAll => package_linux_all(),
+            Task::PackageAUR => package_aur(flags.rel),
+            Task::PublishAUR => publish_aur(flags.message),
+        };
+
+        if let Err(e) = res {
+            eprintln!("Failed to run task: {e}");
+            return ExitCode::FAILURE;
         }
     } else if flags.list {
         println!("\nAvailable tasks:\n");
@@ -65,7 +71,7 @@ fn main() -> anyhow::Result<()> {
         });
     }
 
-    Ok(())
+    ExitCode::SUCCESS
 }
 
 fn package_linux() -> anyhow::Result<()> {
@@ -236,14 +242,11 @@ fn package_aur(rel: Option<u8>) -> anyhow::Result<()> {
                 .context("failed to get source code from github")?
                 .into_bytes();
 
-                let source_code_path = std::env::temp_dir().join(file_name);
+                println!("downloaded source code of tag {file_name}");
 
-                std::fs::write(&source_code_path, source_code)
-                    .context("failed to write source code to tar file")?;
-
-                let source_code = std::fs::read(source_code_path)?;
                 let sha = sha2::Sha256::digest(source_code);
                 let hex = hex::encode(sha);
+                println!("sha256 of source code: {hex}");
 
                 final_str.push_str(&format!("sha256sums=(\"{}\")\n", hex));
             } else if line.starts_with("pkgrel") {
@@ -258,6 +261,20 @@ fn package_aur(rel: Option<u8>) -> anyhow::Result<()> {
 
             anyhow::Ok(final_str)
         })?;
+
+    println!("PKGBULID:\n\n{pkgbuild}");
+
+    println!("Do you want to proceed with printing to .SRCINFO? [Y/n]");
+
+    let mut stdin = std::io::stdin().lock();
+
+    let mut buf = String::new();
+
+    stdin.read_line(&mut buf)?;
+
+    if buf.to_lowercase() == "n\n" {
+        return Ok(());
+    }
 
     std::fs::write(&pkgbuild_path, pkgbuild)?;
 
@@ -291,6 +308,20 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
 
     let pkgbuild = std::fs::read_to_string(&pkgbuild_path).context("failed to read PKGBUILD")?;
 
+    println!("PKGBUILD:\n\n{pkgbuild}");
+
+    println!("Do you want to proceed with publishing the package? [Y/n]");
+
+    let mut stdin = std::io::stdin().lock();
+
+    let mut buf = String::new();
+
+    stdin.read_line(&mut buf)?;
+
+    if buf.to_lowercase() == "n\n" {
+        return Ok(());
+    }
+
     let pkgname = pkgbuild
         .lines()
         .find(|l| l.starts_with("pkgname"))
@@ -322,7 +353,7 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
             "ytdlp-gui-aur",
         ])
         .run_with_output("Clone AUR package")?;
-    println!("clone stdout:\n{}", clone_output);
+    println!("git clone stdout:\n{}", clone_output);
 
     println!("Copying PKGBUILD and .SRCINFO to {}", temp_aur.display());
     std::fs::copy(pkgbuild_path, temp_aur.join("PKGBUILD")).context("failed to copy PKGBUILD")?;
@@ -333,7 +364,7 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
     let add_output = git("add")
         .with_args(["-v", "."])
         .run_with_output("Add AUR changes")?;
-    println!("add stdout:\n{}", add_output);
+    println!("git add stdout:\n{}", add_output);
 
     let commit_output = git("commit")
         .with_args([
@@ -346,10 +377,10 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
         ])
         .run_with_output("Commiting AUR changes")
         .context("failed to commit AUR changes")?;
-    println!("commit stdout:\n{}", commit_output);
+    println!("git commit stdout:\n{}", commit_output);
 
     let push_output = git("push").run_with_output("Pushing to AUR")?;
-    println!("push stdout:\n{}", push_output);
+    println!("git push stdout:\n{}", push_output);
 
     Ok(())
 }
