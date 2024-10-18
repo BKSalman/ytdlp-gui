@@ -83,7 +83,8 @@ pub struct Config {
     #[serde(default)]
     pub save_window_position: bool,
     pub window_position: Option<WindowPosition>,
-    options: Options,
+    pub url: String,
+    options: Options
 }
 
 impl Config {
