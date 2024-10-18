@@ -80,7 +80,8 @@ pub struct Config {
     #[serde(default)]
     pub save_window_position: bool,
     pub window_position: Option<WindowPosition>,
-    options: Options,
+    pub url: String,
+    options: Options
 }
 
 impl Config {
@@ -312,7 +313,7 @@ impl Application for YtGUI {
 
         (
             Self {
-                download_link: String::default(),
+                download_link: flags.url.clone(),
                 is_playlist: bool::default(),
                 config: flags,
 

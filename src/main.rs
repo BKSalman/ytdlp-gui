@@ -9,12 +9,14 @@ use ytdlp_gui::{git_hash, logging, Config, YtGUI};
 fn main() -> iced::Result {
     let mut args = std::env::args();
 
+    let mut url: String = "".to_string();
     if let Some(arg) = args.nth(1) {
         if arg == "--help" || arg == "-h" {
             println!("Usage: ytdlp-gui <OPTIONS>\n");
             println!("Options:");
             println!("-h, --help     Print help");
             println!("-V, --version  Print version");
+            println!("-u, --url      Open video url");
             std::process::exit(0);
         } else if arg == "--version" || arg == "-V" {
             let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
@@ -22,6 +24,8 @@ fn main() -> iced::Result {
             println!("version: {version}");
             println!("git hash: {git_hash}");
             std::process::exit(0);
+        } else if arg == "--url" || arg == "-u" {
+            url = std::env::args().nth(2).expect("no url given");
         } else {
             println!("Invalid option/argument");
             std::process::exit(1);
@@ -51,12 +55,14 @@ fn main() -> iced::Result {
         },
     };
 
-    let config = toml::from_str::<Config>(&config_file).unwrap_or_else(|e| {
+    let mut config = toml::from_str::<Config>(&config_file).unwrap_or_else(|e| {
         tracing::error!("failed to parse config: {e:#?}");
         let config = Config::default();
         tracing::warn!("falling back to default configs: {config:#?}");
         config
     });
+    config.url = url;
+    
 
     let position = if config.save_window_position {
         if let Some(window_pos) = &config.window_position {
