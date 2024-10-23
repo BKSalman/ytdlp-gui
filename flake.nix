@@ -21,26 +21,9 @@
   }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        craneLib = crane.lib.${system};
+        craneLib = (crane.mkLib nixpkgs.legacyPackages.${system});
 
         pkgs = import nixpkgs { inherit system; overlays = [ rust-overlay.overlays.default ]; };
-
-        libPath =  with pkgs; lib.makeLibraryPath [
-          cairo
-          gdk-pixbuf
-          pango
-          vulkan-loader
-          libGL
-          wayland
-          libxkbcommon
-          bzip2
-          fontconfig
-          freetype
-          xorg.libX11
-          xorg.libXcursor
-          xorg.libXrandr
-          xorg.libXi
-        ];
 
         nativeBuildInputs = with pkgs; [
           pkg-config
@@ -55,6 +38,7 @@
           pango
           expat
           pkg-config
+          glib
 
           fontconfig
           freetype
@@ -73,6 +57,7 @@
           xorg.libXcursor
           xorg.libXi
           xorg.libXrandr
+          # bzip2
         ];
 
         cargoArtifacts = craneLib.buildDepsOnly ({
@@ -94,10 +79,10 @@
               done
               install -Dm644 "$src/data/applications/ytdlp-gui.desktop" -t "$out/share/applications/"
 
-              patchelf --set-rpath ${libPath} $out/bin/ytdlp-gui
+              patchelf --set-rpath ${lib.makeLibraryPath buildInputs} $out/bin/ytdlp-gui
 
               wrapProgram $out/bin/ytdlp-gui \
-                --prefix PATH : ${lib.makeBinPath [ pkgs.gnome.zenity pkgs.libsForQt5.kdialog]}\
+                --prefix PATH : ${lib.makeBinPath [ pkgs.zenity pkgs.libsForQt5.kdialog]}\
             '';
 
             GIT_HASH = self.rev or self.dirtyRev;
@@ -114,10 +99,10 @@
               extensions = [ "rust-src" "rust-analyzer" ];
             })
             cargo-watch
-            gnome.zenity
+            zenity
             libsForQt5.kdialog
           ];
-          LD_LIBRARY_PATH = "${libPath}";
+          LD_LIBRARY_PATH = "${lib.makeLibraryPath buildInputs}";
           XDG_DATA_DIRS="${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS";
         };
       }) // {
