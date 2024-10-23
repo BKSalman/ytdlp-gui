@@ -52,6 +52,7 @@ pub enum Message {
     None,
     InputChanged(String),
     TogglePlaylist(bool),
+    ToggleSponsorBlock(bool),
     SelectedVideoFormat(VideoFormat),
     SelectedResolution(VideoResolution),
     SelectedAudioFormat(AudioFormat),
@@ -104,6 +105,7 @@ pub enum Tab {
 pub struct YtGUI {
     download_link: String,
     is_playlist: bool,
+    sponsorblock: bool,
     config: Config,
 
     show_modal: bool,
@@ -180,6 +182,10 @@ impl YtGUI {
                     playlist_options(self.is_playlist, self.config.download_folder.clone());
 
                 args.append(&mut playlist_options.iter().map(|s| &**s).collect());
+
+                if self.sponsorblock {
+                    args.push("--sponsorblock-remove=default");
+                }
 
                 self.modal_title = String::from("Initializing");
                 self.command.start(
@@ -313,7 +319,8 @@ impl Application for YtGUI {
         (
             Self {
                 download_link: String::default(),
-                is_playlist: bool::default(),
+                is_playlist: Default::default(),
+                sponsorblock: Default::default(),
                 config: flags,
 
                 show_modal: false,
@@ -350,6 +357,9 @@ impl Application for YtGUI {
             }
             Message::TogglePlaylist(is_playlist) => {
                 self.is_playlist = is_playlist;
+            }
+            Message::ToggleSponsorBlock(sponsorblock) => {
+                self.sponsorblock = sponsorblock;
             }
             Message::SelectedVideoFormat(format) => {
                 self.config.options.video_format = format;
@@ -520,16 +530,18 @@ impl Application for YtGUI {
 
     fn view(&self) -> widgets::Element<Message> {
         let content: widgets::Element<Message> = column![
+            row![text_input("Download link", &self.download_link)
+                .on_input(Message::InputChanged)
+                .on_submit(Message::Command(command::Message::Run(
+                    self.download_link.clone(),
+                )))
+                .size(FONT_SIZE)
+                .width(Length::Fill),]
+            .spacing(7)
+            .align_items(iced::Alignment::Center),
             row![
-                text("Enter URL: "),
-                text_input("Download link", &self.download_link)
-                    .on_input(Message::InputChanged)
-                    .on_submit(Message::Command(command::Message::Run(
-                        self.download_link.clone(),
-                    )))
-                    .size(FONT_SIZE)
-                    .width(Length::Fill),
-                checkbox("Playlist", self.is_playlist).on_toggle(Message::TogglePlaylist)
+                checkbox("Playlist", self.is_playlist).on_toggle(Message::TogglePlaylist),
+                checkbox("SponsorBlock", self.sponsorblock).on_toggle(Message::ToggleSponsorBlock)
             ]
             .spacing(7)
             .align_items(iced::Alignment::Center),
