@@ -113,6 +113,7 @@ pub struct YtGUI {
     modal_body: String,
     modal_title: String,
     is_choosing_folder: bool,
+    download_text_input_id: iced::widget::text_input::Id,
 
     sender: Option<UnboundedSender<String>>,
     command: command::Command,
@@ -327,6 +328,7 @@ impl Application for YtGUI {
                 active_tab: Tab::Video,
                 modal_body: String::default(),
                 modal_title: String::from("Downloading"),
+                download_text_input_id: iced::widget::text_input::Id::unique(),
 
                 sender: None,
                 command: command::Command::default(),
@@ -522,7 +524,10 @@ impl Application for YtGUI {
                 }
             }
             Message::None => {}
-            Message::FontLoaded(_) => {}
+            Message::FontLoaded(_) => {
+                // focus download link text input
+                return iced::widget::text_input::focus(self.download_text_input_id.clone());
+            }
         }
 
         iced::Command::none()
@@ -536,7 +541,8 @@ impl Application for YtGUI {
                     self.download_link.clone(),
                 )))
                 .size(FONT_SIZE)
-                .width(Length::Fill),]
+                .width(Length::Fill)
+                .id(self.download_text_input_id.clone()),]
             .spacing(7)
             .align_items(iced::Alignment::Center),
             row![
