@@ -1,5 +1,11 @@
 # Changelog
 
+## Unversioned
+
+- Major: Remove download progress modal
+- Minor: Focus download URL input on application start
+- Major: Add SponsorBlock checkbox (this only removes sponsor blocks, and there is currently no option to only mark them)
+
 ## 1.1.1
 
 - Minor: Added and option to the config file that saves the window positions and restores it on next launch
