@@ -43,11 +43,11 @@ impl Command {
     pub fn start(
         &mut self,
         mut args: Vec<&str>,
-        show_modal: &mut bool,
-        modal_body: &mut String,
         bin_dir: Option<PathBuf>,
         sender: Option<UnboundedSender<String>>,
-    ) {
+    ) -> Option<Result<String, String>> {
+        let _ = self.kill();
+
         let mut command = std::process::Command::new(bin_dir.unwrap_or_default().join("yt-dlp"));
 
         #[cfg(target_os = "windows")]
@@ -101,28 +101,19 @@ impl Command {
                 .stdout(Stdio::piped()),
         ) else {
             tracing::error!("Spawning child process failed");
-            *show_modal = true;
-            *modal_body = String::from("yt-dlp binary is missing");
-            return;
+            return Some(Err(String::from("yt-dlp binary is missing")));
         };
 
         self.shared_child = Some(Arc::new(shared_child));
 
         let Some(child) = self.shared_child.clone() else {
-            *show_modal = true;
-            *modal_body = String::from("Something went wrong");
             tracing::error!("No child process");
-            return;
+            return Some(Err(String::from("Something went wrong")));
         };
-
-        *show_modal = true;
-        *modal_body = String::from("Initializing...");
 
         if let Some(stderr) = child.take_stderr() {
             let Some(sender) = sender.clone() else {
-                *show_modal = true;
-                *modal_body = String::from("Something went wrong");
-                return;
+                return Some(Err(String::from("Something went wrong")));
             };
             std::thread::spawn(move || {
                 let reader = BufReader::new(stderr);
@@ -136,9 +127,7 @@ impl Command {
 
         if let Some(stdout) = child.take_stdout() {
             let Some(sender) = sender else {
-                *show_modal = true;
-                *modal_body = String::from("Something went wrong");
-                return;
+                return Some(Err(String::from("Something went wrong")));
             };
             std::thread::spawn(move || {
                 let mut reader = BufReader::new(stdout);
@@ -163,5 +152,7 @@ impl Command {
                 //     .unwrap_or_else(|e| tracing::error!(r#"failed to send "Finished": {e}"#));
             });
         }
+
+        Some(Ok(String::from("Initializing...")))
     }
 }

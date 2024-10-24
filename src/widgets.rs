@@ -12,8 +12,4 @@ pub type TextInput<'a> = iced::widget::TextInput<'a, Theme>;
 
 pub type Container<'a, Message> = iced::widget::Container<'a, Message, Theme>;
 
-pub type Modal<'a, Message> = iced_aw::Modal<'a, Message, Theme>;
-
-pub type Card<'a, Message> = iced_aw::Card<'a, Message, Theme>;
-
 pub type Tabs<'a, Message> = iced_aw::Tabs<'a, Message, Tab, Theme>;

@@ -5,7 +5,6 @@ use iced::widget::{
 };
 use iced::{application, theme, Background, Border, Color};
 use iced_aw::style::tab_bar;
-use iced_aw::{modal, style::card};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Theme;
@@ -68,33 +67,6 @@ impl application::StyleSheet for Theme {
         iced::application::Appearance {
             background_color: SURFACE,
             text_color: Color::WHITE,
-        }
-    }
-}
-
-impl card::StyleSheet for Theme {
-    type Style = ();
-
-    fn active(&self, _style: &Self::Style) -> iced_aw::card::Appearance {
-        iced_aw::card::Appearance {
-            background: SURFACE.into(),
-            body_text_color: Color::WHITE,
-            border_radius: 5.,
-            head_background: ACTIVE.into(),
-            head_text_color: Color::WHITE,
-            border_color: Color::TRANSPARENT,
-            close_color: Color::WHITE,
-            ..Default::default()
-        }
-    }
-}
-
-impl modal::StyleSheet for Theme {
-    type Style = ();
-
-    fn active(&self, _style: &Self::Style) -> iced_aw::style::modal::Appearance {
-        iced_aw::style::modal::Appearance {
-            background: Color::from_rgba(0.01, 0.01, 0.01, 0.5).into(),
         }
     }
 }
