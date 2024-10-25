@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-use iced::widget::horizontal_space;
+use iced::widget::{horizontal_space, pick_list};
 #[cfg(feature = "explain")]
 use iced::Color;
 
@@ -23,9 +23,11 @@ use serde::{Deserialize, Serialize};
 pub mod command;
 pub mod media_options;
 pub mod progress;
+mod sponsorblock;
 pub mod theme;
 pub mod widgets;
 
+use sponsorblock::SponsorBlockOption;
 use tracing::metadata::LevelFilter;
 use tracing::Level;
 use tracing_appender::rolling;
@@ -52,7 +54,7 @@ pub enum Message {
     None,
     InputChanged(String),
     TogglePlaylist(bool),
-    ToggleSponsorBlock(bool),
+    SelectedSponsorBlockOption(SponsorBlockOption),
     SelectedVideoFormat(VideoFormat),
     SelectedResolution(VideoResolution),
     SelectedAudioFormat(AudioFormat),
@@ -105,7 +107,7 @@ pub enum Tab {
 pub struct YtGUI {
     download_link: String,
     is_playlist: bool,
-    sponsorblock: bool,
+    sponsorblock: Option<SponsorBlockOption>,
     config: Config,
 
     active_tab: Tab,
@@ -182,8 +184,15 @@ impl YtGUI {
 
                 args.append(&mut playlist_options.iter().map(|s| &**s).collect());
 
-                if self.sponsorblock {
-                    args.push("--sponsorblock-remove=default");
+                if let Some(sponsorblock) = &self.sponsorblock {
+                    match sponsorblock {
+                        SponsorBlockOption::Remove => {
+                            args.push("--sponsorblock-remove=default");
+                        }
+                        SponsorBlockOption::Mark => {
+                            args.push("--sponsorblock-mark=default");
+                        }
+                    }
                 }
 
                 self.download_message =
@@ -391,8 +400,8 @@ impl Application for YtGUI {
             Message::TogglePlaylist(is_playlist) => {
                 self.is_playlist = is_playlist;
             }
-            Message::ToggleSponsorBlock(sponsorblock) => {
-                self.sponsorblock = sponsorblock;
+            Message::SelectedSponsorBlockOption(sponsorblock) => {
+                self.sponsorblock = Some(sponsorblock);
             }
             Message::SelectedVideoFormat(format) => {
                 self.config.options.video_format = format;
@@ -572,8 +581,17 @@ impl Application for YtGUI {
             .spacing(7)
             .align_items(iced::Alignment::Center),
             row![
+                row![
+                    text("SponsorBlock:"),
+                    pick_list(
+                        vec![SponsorBlockOption::Remove, SponsorBlockOption::Mark,],
+                        self.sponsorblock,
+                        Message::SelectedSponsorBlockOption
+                    )
+                ]
+                .spacing(4)
+                .align_items(iced::Alignment::Center),
                 checkbox("Playlist", self.is_playlist).on_toggle(Message::TogglePlaylist),
-                checkbox("SponsorBlock", self.sponsorblock).on_toggle(Message::ToggleSponsorBlock)
             ]
             .spacing(7)
             .align_items(iced::Alignment::Center),
