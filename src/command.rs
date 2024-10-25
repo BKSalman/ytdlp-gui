@@ -117,7 +117,7 @@ impl Command {
             };
             std::thread::spawn(move || {
                 let reader = BufReader::new(stderr);
-                for line in reader.lines().flatten() {
+                for line in reader.lines().map_while(Result::ok) {
                     sender
                         .unbounded_send(format!("stderr:{line}"))
                         .unwrap_or_else(|e| tracing::error!("failed to send stderr: {e}"));

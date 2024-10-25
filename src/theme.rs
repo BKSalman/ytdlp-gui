@@ -79,13 +79,13 @@ impl tab_bar::StyleSheet for Theme {
             iced_aw::style::tab_bar::Appearance {
                 background: Some(ACTIVE.into()),
                 tab_label_background: ACTIVE.into(),
-                ..self.hovered(&style, is_active)
+                ..self.hovered(style, is_active)
             }
         } else {
             iced_aw::style::tab_bar::Appearance {
                 background: Some(SURFACE.into()),
                 tab_label_background: SURFACE.into(),
-                ..self.hovered(&style, is_active)
+                ..self.hovered(style, is_active)
             }
         }
     }
