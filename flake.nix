@@ -31,6 +31,22 @@
           makeWrapper
         ];
 
+        libPath = with pkgs; lib.makeLibraryPath [
+                glib
+                gtk3
+                libGL
+                bzip2
+                fontconfig
+                freetype
+                xorg.libX11
+                xorg.libXcursor
+                xorg.libXrandr
+                xorg.libXi
+                libxkbcommon
+                vulkan-loader
+                wayland
+              ];
+
         buildInputs = with pkgs; [
           cairo
           gdk-pixbuf
@@ -79,10 +95,11 @@
               done
               install -Dm644 "$src/data/applications/ytdlp-gui.desktop" -t "$out/share/applications/"
 
-              patchelf --set-rpath ${lib.makeLibraryPath buildInputs} $out/bin/ytdlp-gui
+              patchelf --set-rpath ${libPath} $out/bin/ytdlp-gui
 
               wrapProgram $out/bin/ytdlp-gui \
                 --prefix PATH : ${lib.makeBinPath [ pkgs.zenity pkgs.libsForQt5.kdialog]}\
+                --set LD_LIBRARY_PATH "${pkgs.libxkbcommon}/lib:${pkgs.libGL}/lib:${pkgs.wayland}/lib"
             '';
 
             GIT_HASH = self.rev or self.dirtyRev;
