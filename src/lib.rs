@@ -83,11 +83,14 @@ pub struct Config {
     #[serde(default)]
     pub save_window_position: bool,
     pub window_position: Option<WindowPosition>,
+    pub url: Option<String>,
     options: Options,
 }
 
 impl Config {
-    fn update_config_file(&self) -> io::Result<()> {
+    fn update_config_file(&mut self) -> io::Result<()> {
+        // FIXME: hacky solution, make it better by not including url into `Config`
+        self.url = None;
         let current_config = toml::to_string(self).expect("config to string");
         let config_file = dirs::config_dir()
             .expect("config directory")
@@ -360,7 +363,7 @@ impl Application for YtGUI {
 
         (
             Self {
-                download_link: String::default(),
+                download_link: flags.url.clone().unwrap_or_default(),
                 is_playlist: Default::default(),
                 sponsorblock: Default::default(),
                 config: flags,
