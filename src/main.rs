@@ -9,14 +9,16 @@ use ytdlp_gui::{git_hash, logging, Config, YtGUI};
 fn main() -> iced::Result {
     let mut args = std::env::args();
 
-    let mut url: String = "".to_string();
+    let mut url = None;
     if let Some(arg) = args.nth(1) {
         if arg == "--help" || arg == "-h" {
             println!("Usage: ytdlp-gui <OPTIONS>\n");
             println!("Options:");
             println!("-h, --help     Print help");
             println!("-V, --version  Print version");
-            println!("-u, --url      Open video url");
+            println!(
+                "-u, --url      Starts the application with the provided URL as the download URL"
+            );
             std::process::exit(0);
         } else if arg == "--version" || arg == "-V" {
             let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
@@ -25,7 +27,7 @@ fn main() -> iced::Result {
             println!("git hash: {git_hash}");
             std::process::exit(0);
         } else if arg == "--url" || arg == "-u" {
-            url = std::env::args().nth(2).expect("no url given");
+            url = std::env::args().nth(2);
         } else {
             println!("Invalid option/argument");
             std::process::exit(1);
@@ -62,7 +64,6 @@ fn main() -> iced::Result {
         config
     });
     config.url = url;
-    
 
     let position = if config.save_window_position {
         if let Some(window_pos) = &config.window_position {
