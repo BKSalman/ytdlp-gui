@@ -24,6 +24,7 @@ pub enum Message {
 #[derive(Default)]
 pub struct Command {
     pub shared_child: Option<Arc<SharedChild>>,
+    videos_num: usize,
 }
 
 impl Command {
@@ -32,6 +33,14 @@ impl Command {
     // fn view(&self) -> Element<Message> {
     //     ..
     // }
+
+    pub fn is_multiple_videos(&self) -> bool {
+        self.videos_num > 1
+    }
+
+    pub fn finished_single_video(&mut self) {
+        self.videos_num -= 1;
+    }
 
     pub fn kill(&self) -> io::Result<()> {
         if let Some(child) = &self.shared_child {
@@ -45,8 +54,11 @@ impl Command {
         mut args: Vec<&str>,
         bin_dir: Option<PathBuf>,
         sender: Option<UnboundedSender<String>>,
+        videos_num: usize,
     ) -> Option<Result<String, String>> {
         let _ = self.kill();
+
+        self.videos_num = videos_num;
 
         let mut command = std::process::Command::new(bin_dir.unwrap_or_default().join("yt-dlp"));
 

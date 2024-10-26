@@ -131,26 +131,33 @@ impl YtGUI {
     pub fn command_update(&mut self, message: command::Message) {
         match message {
             command::Message::Run(link) => {
-                if Url::parse(&link).is_err() {
-                    self.progress = None;
-                    self.download_message = Some(Err(String::from("invalid URL")));
-                    return;
-                }
-
-                self.config
-                    .update_config_file()
-                    .expect("update config file");
-
                 let mut args: Vec<&str> = Vec::new();
 
-                if link.is_empty() {
-                    self.progress = None;
-                    self.download_message =
-                        Some(Err(String::from("No Download link was provided!")));
-                    return;
-                }
+                let mut links_num = 0;
 
-                args.push(&link);
+                for (i, link) in link.split(' ').enumerate() {
+                    if Url::parse(link).is_err() {
+                        self.progress = None;
+                        self.download_message =
+                            Some(Err(format!("invalid URL on position: {}", i + 1)));
+                        return;
+                    }
+
+                    self.config
+                        .update_config_file()
+                        .expect("update config file");
+
+                    if link.is_empty() {
+                        self.progress = None;
+                        self.download_message =
+                            Some(Err(String::from("No Download link was provided!")));
+                        return;
+                    }
+
+                    args.push(link);
+
+                    links_num = i + 1;
+                }
 
                 match self.active_tab {
                     Tab::Video => {
@@ -198,9 +205,12 @@ impl YtGUI {
                     }
                 }
 
-                self.download_message =
-                    self.command
-                        .start(args, self.config.bin_dir.clone(), self.sender.clone());
+                self.download_message = self.command.start(
+                    args,
+                    self.config.bin_dir.clone(),
+                    self.sender.clone(),
+                    links_num,
+                );
             }
             command::Message::Stop => {
                 match self.command.kill() {
@@ -510,17 +520,21 @@ impl Application for YtGUI {
                         }
                         Progress::EndOfVideo => {
                             if !self.is_playlist {
-                                match self.command.kill() {
-                                    Ok(_) => {
-                                        tracing::debug!("killed child process")
-                                    }
-                                    Err(e) => {
-                                        tracing::error!("failed to kill child process {e}")
-                                    }
-                                };
-                                self.progress = None;
-                                self.download_message = Some(Ok(String::from("Finished!")));
-                                self.log_download();
+                                if self.command.is_multiple_videos() {
+                                    self.command.finished_single_video();
+                                } else {
+                                    match self.command.kill() {
+                                        Ok(_) => {
+                                            tracing::debug!("killed child process")
+                                        }
+                                        Err(e) => {
+                                            tracing::error!("failed to kill child process {e}")
+                                        }
+                                    };
+                                    self.progress = None;
+                                    self.download_message = Some(Ok(String::from("Finished!")));
+                                    self.log_download();
+                                }
                             }
                         }
                         _ => {}
