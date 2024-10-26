@@ -213,50 +213,22 @@ impl YtGUI {
                 );
             }
             command::Message::Stop => {
-                match self.command.kill() {
-                    Ok(_) => {
-                        tracing::debug!("killed child process")
-                    }
-                    Err(e) => {
-                        tracing::error!("failed to kill child process {e}")
-                    }
-                };
+                self.command.kill();
                 self.progress = None;
                 let _ = self.download_message.take();
             }
             command::Message::AlreadyExists => {
-                match self.command.kill() {
-                    Ok(_) => {
-                        tracing::debug!("killed child process")
-                    }
-                    Err(e) => {
-                        tracing::error!("failed to kill child process {e}")
-                    }
-                };
+                self.command.kill();
                 self.progress = None;
                 self.download_message = Some(Err(String::from("Already exists")));
             }
             command::Message::PlaylistNotChecked => {
-                match self.command.kill() {
-                    Ok(_) => {
-                        tracing::debug!("killed child process")
-                    }
-                    Err(e) => {
-                        tracing::error!("failed to kill child process {e}")
-                    }
-                };
+                self.command.kill();
                 self.progress = None;
                 self.download_message = Some(Err(String::from("Playlist checkbox not checked!")));
             }
             command::Message::Finished => {
-                match self.command.kill() {
-                    Ok(_) => {
-                        tracing::debug!("killed child process")
-                    }
-                    Err(e) => {
-                        tracing::error!("failed to kill child process {e}")
-                    }
-                };
+                self.command.kill();
                 self.download_message = Some(Ok(String::from("Finished!")));
                 self.log_download();
             }
@@ -506,14 +478,7 @@ impl Application for YtGUI {
                         }
                         Progress::EndOfPlaylist => {
                             println!("end of playlist");
-                            match self.command.kill() {
-                                Ok(_) => {
-                                    tracing::debug!("killed child process")
-                                }
-                                Err(e) => {
-                                    tracing::error!("failed to kill child process {e}")
-                                }
-                            };
+                            self.command.kill();
                             self.progress = None;
                             self.download_message = Some(Ok(String::from("Finished playlist!")));
                             self.log_download();
@@ -523,14 +488,7 @@ impl Application for YtGUI {
                                 if self.command.is_multiple_videos() {
                                     self.command.finished_single_video();
                                 } else {
-                                    match self.command.kill() {
-                                        Ok(_) => {
-                                            tracing::debug!("killed child process")
-                                        }
-                                        Err(e) => {
-                                            tracing::error!("failed to kill child process {e}")
-                                        }
-                                    };
+                                    self.command.kill();
                                     self.progress = None;
                                     self.download_message = Some(Ok(String::from("Finished!")));
                                     self.log_download();
@@ -550,9 +508,7 @@ impl Application for YtGUI {
                 if let Event::Window(id, window_event) = event {
                     match window_event {
                         window::Event::CloseRequested => {
-                            if self.command.kill().is_ok() {
-                                tracing::debug!("killed child process");
-                            }
+                            self.command.kill();
                             self.config.window_position = Some(WindowPosition {
                                 x: self.window_pos.x,
                                 y: self.window_pos.y,

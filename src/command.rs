@@ -1,6 +1,6 @@
 use shared_child::SharedChild;
 use std::{
-    io::{self, BufRead, BufReader},
+    io::{BufRead, BufReader},
     path::PathBuf,
     process::Stdio,
     sync::Arc,
@@ -42,11 +42,25 @@ impl Command {
         self.videos_num -= 1;
     }
 
-    pub fn kill(&self) -> io::Result<()> {
+    pub fn kill(&self) {
         if let Some(child) = &self.shared_child {
-            return child.kill();
+            match child.kill() {
+                Ok(_) => {
+                    tracing::debug!("killed child process");
+                }
+                Err(e) => {
+                    tracing::error!("failed to kill child process {e}");
+                }
+            };
+            match child.wait() {
+                Ok(status) => {
+                    tracing::debug!("waited for child process: {status}");
+                }
+                Err(e) => {
+                    tracing::error!("failed to to wait for child process {e}");
+                }
+            };
         }
-        Ok(())
     }
 
     pub fn start(
