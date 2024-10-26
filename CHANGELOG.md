@@ -3,8 +3,11 @@
 ## Unversioned
 
 - Major: Remove download progress modal
+- Major: Add `-u` and `--url` to start the application with a URL in the text input (thanks @coding-moding! #38)
+- Major: Add SponsorBlock pick list for removing or marking sponsor blocks
 - Minor: Focus download URL input on application start
-- Major: Add SponsorBlock checkbox (this only removes sponsor blocks, and there is currently no option to only mark them)
+- Minor: Support downloading multiple videos (add all the links into the text input with space between them)
+- Bugfix: Properly kill child process
 
 ## 1.1.1
 
