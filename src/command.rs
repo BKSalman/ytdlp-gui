@@ -101,7 +101,7 @@ impl Command {
 
         // format progress as a simple json
         let template = concat!(
-            r#"__{"type": "downloading", "video_title": "%(info.title)s","#,
+            r#"__{"type": "downloading","#,
             r#""eta": %(progress.eta)s, "downloaded_bytes": %(progress.downloaded_bytes)s,"#,
             r#""total_bytes": %(progress.total_bytes)s, "total_bytes_estimate": %(progress.total_bytes_estimate)s,"#,
             r#""elapsed": %(progress.elapsed)s, "speed": %(progress.speed)s, "playlist_count": %(info.playlist_count)s,"#,

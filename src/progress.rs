@@ -67,7 +67,6 @@ pub enum Progress {
         video_id: String,
     },
     Downloading {
-        video_title: String,
         eta: Option<f64>,
         downloaded_bytes: f32,
         total_bytes: Option<f32>,

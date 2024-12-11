@@ -430,7 +430,6 @@ impl Application for YtGUI {
                 for progress in parse_progress(progress.clone()) {
                     match progress {
                         Progress::Downloading {
-                            video_title: _,
                             eta,
                             downloaded_bytes,
                             total_bytes,
