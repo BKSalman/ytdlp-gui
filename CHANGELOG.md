@@ -1,6 +1,6 @@
 # Changelog
 
-## Unversioned
+## 2.0.0
 
 - Major: Remove download progress modal
 - Major: Add `-u` and `--url` to start the application with a URL in the text input (thanks @coding-moding! #38)
