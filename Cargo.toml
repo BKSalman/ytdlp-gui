@@ -7,7 +7,7 @@ license = "GPL-3.0"
 repository = "https://github.com/BKSalman/ytdlp-gui"
 homepage = "https://github.com/BKSalman"
 readme = "README.md"
-authors = ["Salman"]
+authors = ["Salman Abuhaimed"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
