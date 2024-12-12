@@ -8,6 +8,7 @@
 - Minor: Focus download URL input on application start
 - Minor: Support downloading multiple videos (add all the links into the text input with space between them)
 - Bugfix: Properly kill child process
+- Bugfix: fix crash on videos with quotes
 
 ## 1.1.1
 
