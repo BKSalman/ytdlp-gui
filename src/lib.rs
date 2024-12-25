@@ -135,7 +135,7 @@ impl YtGUI {
 
                 let mut links_num = 0;
 
-                for (i, link) in link.split(' ').enumerate() {
+                for (i, link) in link.trim().split(' ').enumerate() {
                     if Url::parse(link).is_err() {
                         self.progress = None;
                         self.download_message =
