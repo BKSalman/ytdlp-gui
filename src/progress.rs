@@ -85,20 +85,18 @@ pub enum Progress {
 }
 
 pub fn parse_progress(input: String) -> Vec<Progress> {
-    input.lines().filter_map(|line| {
-        if let Some(progress) = line.strip_prefix("__") {
-            let progress = progress.replace("NA", "null");
+    input
+        .lines()
+        .filter_map(|line| {
+            if line.starts_with("__") {
+                for object in line.split("__") {
+                    let progress = object.replace("NA", "null");
 
-            Some(
-                serde_json::from_str::<Progress>(&progress).unwrap_or_else(|e| {
-                    tracing::error!(
-                        "failed to parse yt-dlp progress: \noriginal-input: {input}\nstripped-input: {progress}\n{e:#?}"
-                    );
-                    panic!("failed to parse yt-dlp progress");
-                }),
-            )
-        } else {
+                    return serde_json::from_str::<Progress>(&progress).ok();
+                }
+            }
+
             None
-        }
-    }).collect::<Vec<Progress>>()
+        })
+        .collect::<Vec<Progress>>()
 }
