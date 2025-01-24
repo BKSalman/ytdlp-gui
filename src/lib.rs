@@ -76,6 +76,12 @@ pub struct WindowPosition {
     pub y: f32,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub struct WindowSize {
+    pub width: f32,
+    pub height: f32,
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Config {
     bin_dir: Option<PathBuf>,
@@ -83,6 +89,7 @@ pub struct Config {
     #[serde(default)]
     pub save_window_position: bool,
     pub window_position: Option<WindowPosition>,
+    pub window_size: Option<WindowSize>,
     pub url: Option<String>,
     options: Options,
 }
@@ -656,7 +663,7 @@ pub fn logging() {
         tracing::info!(
             "no log level specified, defaulting to debug level for ytdlp_gui crate only"
         );
-        std::env::set_var("YTG_LOG", "none,ytdlp_gui=debug");
+        unsafe { std::env::set_var("YTG_LOG", "none,ytdlp_gui=debug") };
     }
 
     let logs_dir = dirs::cache_dir()
