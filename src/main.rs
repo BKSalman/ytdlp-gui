@@ -78,7 +78,7 @@ fn main() -> iced::Result {
     let settings = Settings {
         id: Some(String::from("ytdlp-gui")),
         window: window::Settings {
-            size: iced::Size::new(600., 360.),
+            size: iced::Size::new(758., 471.),
             resizable: true,
             exit_on_close_request: false,
             position,
