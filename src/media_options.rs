@@ -3,7 +3,10 @@ use std::path::PathBuf;
 use iced::widget::{pick_list, row, text};
 use serde::{Deserialize, Serialize};
 
-use crate::{widgets, Message, FONT_SIZE, SPACING};
+use crate::{
+    app::{FONT_SIZE, SPACING},
+    widgets, Message,
+};
 
 #[derive(Deserialize, Serialize, Debug, Default, Copy, Clone)]
 pub struct Options {
@@ -142,7 +145,7 @@ impl AudioQuality {
 }
 
 impl Options {
-    pub fn video_resolutions(resolution: VideoResolution) -> widgets::Row<'static, Message> {
+    pub fn video_resolutions(resolution: VideoResolution) -> iced::widget::Row<'static, Message> {
         row![
             text("Resolution: ").size(FONT_SIZE),
             pick_list(
@@ -160,11 +163,11 @@ impl Options {
         ]
         .spacing(SPACING)
         .width(iced::Length::Fill)
-        .align_items(iced::Alignment::Center)
+        .align_y(iced::Alignment::Center)
         .padding(12)
     }
 
-    pub fn video_formats(format: VideoFormat) -> widgets::Row<'static, Message> {
+    pub fn video_formats(format: VideoFormat) -> iced::widget::Row<'static, Message> {
         row![
             text("Preferred Format: ").size(FONT_SIZE),
             pick_list(
@@ -176,11 +179,11 @@ impl Options {
         ]
         .width(iced::Length::Fill)
         .spacing(SPACING)
-        .align_items(iced::Alignment::Center)
+        .align_y(iced::Alignment::Center)
         .padding(12)
     }
 
-    pub fn audio_formats(format: AudioFormat) -> widgets::Row<'static, Message> {
+    pub fn audio_formats(format: AudioFormat) -> iced::widget::Row<'static, Message> {
         row![
             text("Preferred Format: ").size(FONT_SIZE),
             pick_list(
@@ -198,11 +201,11 @@ impl Options {
         ]
         .width(iced::Length::Fill)
         .spacing(SPACING)
-        .align_items(iced::Alignment::Center)
+        .align_y(iced::Alignment::Center)
         .padding(12)
     }
 
-    pub fn audio_qualities(quality: AudioQuality) -> widgets::Row<'static, Message> {
+    pub fn audio_qualities(quality: AudioQuality) -> iced::widget::Row<'static, Message> {
         row![
             text("Quality: ").size(FONT_SIZE),
             pick_list(
@@ -219,7 +222,7 @@ impl Options {
         ]
         .width(iced::Length::Fill)
         .spacing(SPACING)
-        .align_items(iced::Alignment::Center)
+        .align_y(iced::Alignment::Center)
         .padding(12)
     }
 }
