@@ -4,6 +4,7 @@ use iced::{
     window::{self, Position},
     Application, Point, Settings,
 };
+use tracing::instrument::WithSubscriber;
 use ytdlp_gui::{git_hash, logging, Config, YtGUI};
 
 fn main() -> iced::Result {
@@ -75,9 +76,8 @@ fn main() -> iced::Result {
         Position::default()
     };
 
-    let settings = Settings {
-        id: Some(String::from("ytdlp-gui")),
-        window: window::Settings {
+    iced::application("Youtube Downloader", YtGUI::update, YtGUI::view)
+        .window(window::Settings {
             size: config
                 .window_size
                 .map(|s| iced::Size::new(s.width, s.height))
@@ -86,10 +86,21 @@ fn main() -> iced::Result {
             exit_on_close_request: false,
             position,
             ..Default::default()
-        },
-        flags: config,
-        ..Default::default()
-    };
-
-    YtGUI::run(settings)
+        })
+        .subscription(YtGUI::subscription)
+        .font(iced_fonts::REQUIRED_FONT_BYTES)
+        // .theme(iced::Theme::custom(
+        //     String::from("ytdlp-gui"),
+        //     iced::theme::Palette {
+        //         background: (),
+        //         text: (),
+        //         primary: (),
+        //         success: (),
+        //         danger: (),
+        //     },
+        // ))
+        .run_with(|| {
+            let (sender, receiver) = iced::futures::channel::mpsc::unbounded();
+            (YtGUI::new(config, sender), iced::Task::stream(receiver))
+        })
 }

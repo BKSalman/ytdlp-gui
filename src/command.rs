@@ -8,18 +8,9 @@ use std::{
 
 use iced::futures::channel::mpsc::UnboundedSender;
 
+use crate::error::DownloadError;
 #[cfg(target_os = "windows")]
 use crate::CREATE_NO_WINDOW;
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    Run(String),
-    Stop,
-    Finished,
-    AlreadyExists,
-    PlaylistNotChecked,
-    Error(String),
-}
 
 #[derive(Default)]
 pub struct Command {
@@ -42,8 +33,8 @@ impl Command {
         self.videos_num -= 1;
     }
 
-    pub fn kill(&self) {
-        if let Some(child) = &self.shared_child {
+    pub fn kill(&mut self) {
+        if let Some(child) = self.shared_child.take() {
             match child.kill() {
                 Ok(_) => {
                     tracing::debug!("killed child process");
@@ -67,9 +58,9 @@ impl Command {
         &mut self,
         mut args: Vec<&str>,
         bin_dir: Option<PathBuf>,
-        sender: Option<UnboundedSender<String>>,
+        sender: UnboundedSender<crate::Message>,
         videos_num: usize,
-    ) -> Option<Result<String, String>> {
+    ) -> Option<Result<String, DownloadError>> {
         let _ = self.kill();
 
         self.videos_num = videos_num;
@@ -127,34 +118,29 @@ impl Command {
                 .stdout(Stdio::piped()),
         ) else {
             tracing::error!("Spawning child process failed");
-            return Some(Err(String::from("yt-dlp binary is missing")));
+            return Some(Err(DownloadError::YtDlpMissing));
         };
 
         self.shared_child = Some(Arc::new(shared_child));
 
         let Some(child) = self.shared_child.clone() else {
             tracing::error!("No child process");
-            return Some(Err(String::from("Something went wrong")));
+            return Some(Err(DownloadError::Other));
         };
 
         if let Some(stderr) = child.take_stderr() {
-            let Some(sender) = sender.clone() else {
-                return Some(Err(String::from("Something went wrong")));
-            };
+            let sender = sender.clone();
             std::thread::spawn(move || {
                 let reader = BufReader::new(stderr);
                 for line in reader.lines().map_while(Result::ok) {
                     sender
-                        .unbounded_send(format!("stderr:{line}"))
+                        .unbounded_send(crate::Message::ProgressEvent(format!("stderr:{line}")))
                         .unwrap_or_else(|e| tracing::error!("failed to send stderr: {e}"));
                 }
             });
         }
 
         if let Some(stdout) = child.take_stdout() {
-            let Some(sender) = sender else {
-                return Some(Err(String::from("Something went wrong")));
-            };
             std::thread::spawn(move || {
                 let mut reader = BufReader::new(stdout);
                 let mut buffer = vec![];
@@ -168,7 +154,9 @@ impl Command {
                     }
 
                     sender
-                        .unbounded_send(String::from_utf8_lossy(&buffer).to_string())
+                        .unbounded_send(crate::Message::ProgressEvent(
+                            String::from_utf8_lossy(&buffer).to_string(),
+                        ))
                         .unwrap_or_else(|e| tracing::error!("failed to send stdout: {e}"));
 
                     buffer.clear();
@@ -180,5 +168,9 @@ impl Command {
         }
 
         Some(Ok(String::from("Initializing...")))
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.shared_child.is_some()
     }
 }
