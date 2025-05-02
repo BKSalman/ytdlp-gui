@@ -323,12 +323,15 @@ impl YtGUI {
                     Tab::Video,
                     iced_aw::TabLabel::Text("Video".to_string()),
                     column![row![
-                        column![
-                            Options::video_resolutions(self.config.options.video_resolution),
-                            Options::video_formats(self.config.options.video_format),
-                        ]
-                        .width(Length::Fill),
-                        self.show_download_message(),
+                        if let Some(download_message) = &self.download_message {
+                            self.show_download_message(download_message)
+                        } else {
+                            column![
+                                Options::video_resolutions(self.config.options.video_resolution),
+                                Options::video_formats(self.config.options.video_format),
+                            ]
+                            .width(Length::Fill)
+                        }
                     ]]
                     .width(Length::Fill),
                 )
@@ -336,11 +339,14 @@ impl YtGUI {
                     Tab::Audio,
                     iced_aw::TabLabel::Text("Audio".to_string()),
                     column![row![
-                        column![
-                            Options::audio_qualities(self.config.options.audio_quality),
-                            Options::audio_formats(self.config.options.audio_format),
-                        ],
-                        self.show_download_message(),
+                        if let Some(download_message) = &self.download_message {
+                            self.show_download_message(download_message)
+                        } else {
+                            column![
+                                Options::audio_qualities(self.config.options.audio_quality),
+                                Options::audio_formats(self.config.options.audio_format),
+                            ]
+                        }
                     ]],
                 )
                 .set_active_tab(&self.active_tab)
@@ -391,44 +397,43 @@ impl YtGUI {
         iced::event::listen().map(Message::IcedEvent)
     }
 
-    fn show_download_message(&self) -> iced::widget::Column<Message> {
-        if let Some(download_message) = &self.download_message {
-            match download_message {
-                Ok(download_message) => column![
-                    row![
-                        text(download_message).align_x(iced::alignment::Horizontal::Center),
-                        horizontal_space(),
-                        text(self.playlist_progress.as_deref().unwrap_or_default()),
-                        button("X").on_press(Message::StopDownload).padding([5, 25]),
-                    ]
-                    .spacing(SPACING)
-                    .width(iced::Length::Fill)
-                    .align_y(iced::Alignment::Center)
-                    .padding(12),
-                    if let Some(progress) = self.progress {
-                        row![progress_bar(0.0..=100., progress)]
-                            .spacing(SPACING)
-                            .width(iced::Length::Fill)
-                            .align_y(iced::Alignment::Center)
-                            .padding(12)
-                    } else {
-                        row![]
-                    }
+    fn show_download_message<'a>(
+        &'a self,
+        download_message: &'a Result<String, DownloadError>,
+    ) -> iced::widget::Column<'a, Message> {
+        match download_message {
+            Ok(download_message) => column![
+                row![
+                    text(download_message).align_x(iced::alignment::Horizontal::Center),
+                    horizontal_space(),
+                    text(self.playlist_progress.as_deref().unwrap_or_default()),
+                    button("X").on_press(Message::StopDownload).padding([5, 25]),
                 ]
-                .width(Length::Fill)
-                .align_x(iced::Alignment::Center),
-                Err(e) => {
-                    column![
-                        row![text(e.to_string()).align_x(iced::alignment::Horizontal::Center)]
-                            .spacing(SPACING)
-                            .width(iced::Length::Fill)
-                            .align_y(iced::Alignment::Center)
-                            .padding(12),
-                    ]
+                .spacing(SPACING)
+                .width(iced::Length::Fill)
+                .align_y(iced::Alignment::Center)
+                .padding(12),
+                if let Some(progress) = self.progress {
+                    row![progress_bar(0.0..=100., progress)]
+                        .spacing(SPACING)
+                        .width(iced::Length::Fill)
+                        .align_y(iced::Alignment::Center)
+                        .padding(12)
+                } else {
+                    row![]
                 }
+            ]
+            .width(Length::Fill)
+            .align_x(iced::Alignment::Center),
+            Err(e) => {
+                column![
+                    row![text(e.to_string()).align_x(iced::alignment::Horizontal::Center)]
+                        .spacing(SPACING)
+                        .width(iced::Length::Fill)
+                        .align_y(iced::Alignment::Center)
+                        .padding(12),
+                ]
             }
-        } else {
-            column![]
         }
     }
 }
