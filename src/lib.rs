@@ -5,19 +5,13 @@ use std::{fs, io};
 
 use app::Tab;
 use error::DownloadError;
-use iced::widget::horizontal_space;
 #[cfg(feature = "explain")]
 use iced::Color;
 
 use chrono::Local;
-use iced::{
-    futures::channel::mpsc::UnboundedSender,
-    widget::{button, column, progress_bar, row, text},
-    Length,
-};
-use iced::{Event, Point, Theme};
+use iced::futures::channel::mpsc::UnboundedSender;
+use iced::{Event, Point};
 
-use progress::ProgressError;
 use rfd::AsyncFileDialog;
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +22,6 @@ pub mod media_options;
 pub mod progress;
 mod sponsorblock;
 pub mod theme;
-pub mod widgets;
 
 use sponsorblock::SponsorBlockOption;
 use tracing::metadata::LevelFilter;
@@ -38,9 +31,8 @@ use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
-use url::Url;
 
-use crate::media_options::{playlist_options, Options};
+use crate::media_options::Options;
 use crate::media_options::{AudioFormat, AudioQuality, VideoFormat, VideoResolution};
 
 #[cfg(target_os = "windows")]
@@ -123,7 +115,6 @@ pub struct YtGUI {
     window_height: f32,
     window_width: f32,
     window_pos: Point,
-    theme: Theme,
 }
 
 impl YtGUI {
@@ -151,7 +142,6 @@ impl YtGUI {
             window_width: 0.,
             is_choosing_folder: false,
             window_pos: Point::default(),
-            theme: Theme::Light,
         }
     }
 

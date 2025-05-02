@@ -2,10 +2,9 @@
 
 use iced::{
     window::{self, Position},
-    Application, Point, Settings,
+    Point,
 };
-use tracing::instrument::WithSubscriber;
-use ytdlp_gui::{git_hash, logging, Config, YtGUI};
+use ytdlp_gui::{git_hash, logging, theme::ytdlp_gui_theme, Config, YtGUI};
 
 fn main() -> iced::Result {
     let mut args = std::env::args();
@@ -89,16 +88,7 @@ fn main() -> iced::Result {
         })
         .subscription(YtGUI::subscription)
         .font(iced_fonts::REQUIRED_FONT_BYTES)
-        // .theme(iced::Theme::custom(
-        //     String::from("ytdlp-gui"),
-        //     iced::theme::Palette {
-        //         background: (),
-        //         text: (),
-        //         primary: (),
-        //         success: (),
-        //         danger: (),
-        //     },
-        // ))
+        .theme(ytdlp_gui_theme)
         .run_with(|| {
             let (sender, receiver) = iced::futures::channel::mpsc::unbounded();
             (YtGUI::new(config, sender), iced::Task::stream(receiver))

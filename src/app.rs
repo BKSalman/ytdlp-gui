@@ -11,12 +11,12 @@ use url::Url;
 use crate::error::DownloadError;
 use crate::media_options::{playlist_options, Options};
 use crate::sponsorblock::SponsorBlockOption;
-use crate::theme;
+use crate::theme::{pick_list_menu_style, pick_list_style, tab_bar_style};
 // use crate::widgets::Tabs;
 use crate::{
-    choose_folder, command,
+    choose_folder,
     progress::{parse_progress, Progress},
-    widgets, Config, Message, WindowPosition, YtGUI,
+    Message, WindowPosition, YtGUI,
 };
 
 pub const FONT_SIZE: u16 = 18;
@@ -309,6 +309,8 @@ impl YtGUI {
                         self.sponsorblock,
                         Message::SelectedSponsorBlockOption
                     )
+                    .style(pick_list_style)
+                    .menu_style(pick_list_menu_style)
                 ]
                 .spacing(4)
                 .align_y(iced::Alignment::Center),
@@ -344,7 +346,8 @@ impl YtGUI {
                 .set_active_tab(&self.active_tab)
                 .height(Length::Shrink)
                 .width(Length::FillPortion(1))
-                .tab_bar_width(Length::FillPortion(1)),
+                .tab_bar_width(Length::FillPortion(1))
+                .tab_bar_style(tab_bar_style),
             row![
                 text_input(
                     "",

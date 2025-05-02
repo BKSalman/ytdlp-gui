@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app::{FONT_SIZE, SPACING},
-    widgets, Message,
+    theme::{pick_list_menu_style, pick_list_style},
+    Message,
 };
 
 #[derive(Deserialize, Serialize, Debug, Default, Copy, Clone)]
@@ -159,7 +160,9 @@ impl Options {
                 Some(resolution),
                 Message::SelectedResolution
             )
-            .text_size(FONT_SIZE),
+            .text_size(FONT_SIZE)
+            .menu_style(pick_list_menu_style)
+            .style(pick_list_style),
         ]
         .spacing(SPACING)
         .width(iced::Length::Fill)
@@ -175,7 +178,9 @@ impl Options {
                 Some(format),
                 Message::SelectedVideoFormat
             )
-            .text_size(FONT_SIZE),
+            .text_size(FONT_SIZE)
+            .menu_style(pick_list_menu_style)
+            .style(pick_list_style),
         ]
         .width(iced::Length::Fill)
         .spacing(SPACING)
@@ -197,7 +202,9 @@ impl Options {
                 Some(format),
                 Message::SelectedAudioFormat
             )
-            .text_size(FONT_SIZE),
+            .text_size(FONT_SIZE)
+            .style(pick_list_style)
+            .menu_style(pick_list_menu_style)
         ]
         .width(iced::Length::Fill)
         .spacing(SPACING)
@@ -219,6 +226,8 @@ impl Options {
                 Message::SelectedAudioQuality
             )
             .text_size(FONT_SIZE)
+            .style(pick_list_style)
+            .menu_style(pick_list_menu_style)
         ]
         .width(iced::Length::Fill)
         .spacing(SPACING)
