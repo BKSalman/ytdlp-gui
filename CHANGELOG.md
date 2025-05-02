@@ -1,5 +1,11 @@
 # Changelog
 
+## Unversioned
+- Major: Updated to `iced` v0.13
+- Minor: Some changes to the application theme
+- Dev: add basic test for `yt-dlp` progress parsing
+- Bugfix: fix `yt-dlp` progress parsing
+
 ## 2.0.0
 
 - Major: Remove download progress modal
