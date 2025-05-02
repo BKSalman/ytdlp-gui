@@ -62,6 +62,9 @@ pub enum Message {
     SelectDownloadFolder,
     SelectedDownloadFolder(Option<PathBuf>),
     SelectFolderTextInput(String),
+    SelectCookieFile,
+    SelectedCookieFile(Option<String>),
+    SelectCookiesTextInput(String),
     SelectTab(Tab),
     ProgressEvent(String),
     Ready(UnboundedSender<String>),
@@ -86,6 +89,7 @@ pub struct WindowSize {
 pub struct Config {
     bin_dir: Option<PathBuf>,
     download_folder: Option<PathBuf>,
+    cookies_file: Option<String>,
     #[serde(default)]
     pub save_window_position: bool,
     pub window_position: Option<WindowPosition>,
@@ -124,6 +128,7 @@ pub struct YtGUI {
     playlist_progress: Option<String>,
     download_message: Option<Result<String, String>>,
     is_choosing_folder: bool,
+    is_choosing_cookies: bool,
     download_text_input_id: iced::widget::text_input::Id,
 
     sender: Option<UnboundedSender<String>>,
@@ -200,7 +205,7 @@ impl YtGUI {
                     playlist_options(self.is_playlist, self.config.download_folder.clone());
 
                 args.append(&mut playlist_options.iter().map(|s| &**s).collect());
-
+                
                 if let Some(sponsorblock) = &self.sponsorblock {
                     match sponsorblock {
                         SponsorBlockOption::Remove => {
@@ -210,6 +215,11 @@ impl YtGUI {
                             args.push("--sponsorblock-mark=default");
                         }
                     }
+                }
+                
+                if let Some(cookies_file) = &self.config.cookies_file {
+                    args.push("--cookies");
+                    args.push(&cookies_file);
                 }
 
                 self.download_message = self.command.start(
@@ -250,6 +260,8 @@ impl YtGUI {
                     self.download_message = Some(Err(String::from("Video unavailable, skipping...")));
                 } else if e.contains("YouTube said: The playlist does not exist.") {
                     self.download_message = Some(Err(String::from("Playlist does not exist")));
+                } else if e.contains("Sign in to confirm your age.") {
+                    self.download_message = Some(Err(String::from("Age restricted video. Cookie file is not selected or outdated")))
                 } else {
                     self.download_message = Some(Err(String::from("Something went wrong, logging...")));
                 }
@@ -368,6 +380,7 @@ impl Application for YtGUI {
                 window_height: 0.,
                 window_width: 0.,
                 is_choosing_folder: false,
+                is_choosing_cookies: false,
                 window_pos: Point::default(),
             },
             iced::font::load(iced_aw::BOOTSTRAP_FONT_BYTES).map(Message::FontLoaded),
@@ -423,6 +436,32 @@ impl Application for YtGUI {
                 let path = PathBuf::from(folder_string);
 
                 self.config.download_folder = Some(path);
+            }
+            Message::SelectCookieFile => {
+                if !self.is_choosing_cookies {
+                    self.is_choosing_cookies = true;
+
+                    return iced::Command::perform(
+                        choose_file(
+                            self.config
+                                .cookies_file
+                                .clone()
+                                .unwrap_or_else(|| "~/Cookies file".into()),
+                        ),
+                        Message::SelectedCookieFile,
+                    );
+                }
+            }
+            Message::SelectedCookieFile(file) => {
+                if let Some(path) = file {
+                    self.config.cookies_file = Some(path);
+                }
+                self.is_choosing_cookies = false;
+            }
+            Message::SelectCookiesTextInput(cookies_string) => {
+                // let path = PathBuf::from(cookies_string);
+
+                self.config.cookies_file = Some(cookies_string);
             }
             Message::SelectTab(selected_tab) => {
                 self.active_tab = selected_tab;
@@ -618,6 +657,20 @@ impl Application for YtGUI {
             ]
             .spacing(SPACING)
             .align_items(iced::Alignment::Center),
+            row![
+                text_input(
+                    "",
+                    &self
+                        .config
+                        .cookies_file
+                        .clone()
+                        .unwrap_or_else(|| "~/Cookies file".into())
+                )
+                .on_input(Message::SelectCookiesTextInput),
+                button("Browse").on_press(Message::SelectCookieFile),
+            ]
+            .spacing(SPACING)
+            .align_items(iced::Alignment::Center),
             row![if self.progress.is_none() {
                 button("Download").on_press(Message::Command(command::Message::Run(
                     self.download_link.clone(),
@@ -656,6 +709,14 @@ async fn choose_folder(starting_dir: impl AsRef<Path>) -> Option<PathBuf> {
         .pick_folder()
         .await
         .map(|f| f.path().to_path_buf())
+}
+
+async fn choose_file(starting_dir: impl AsRef<Path>) -> Option<String> {
+    AsyncFileDialog::new()
+        .set_directory(starting_dir)
+        .pick_file()
+        .await
+        .map(|f| f.path().to_string_lossy().to_string())
 }
 
 pub fn logging() {
