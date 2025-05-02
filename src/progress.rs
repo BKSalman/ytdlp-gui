@@ -1,64 +1,6 @@
-use iced::futures::{channel::mpsc, StreamExt};
-use iced::{subscription, Subscription};
 use serde::{Deserialize, Serialize};
 
-use crate::{command, Message};
-
-pub enum ProgressState {
-    Starting,
-    Ready(mpsc::UnboundedReceiver<String>),
-}
-
-pub fn bind() -> Subscription<Message> {
-    struct Progress;
-
-    subscription::unfold(
-        std::any::TypeId::of::<Progress>(),
-        ProgressState::Starting,
-        |state| async move {
-            match state {
-                ProgressState::Starting => {
-                    let (sender, receiver) = mpsc::unbounded();
-
-                    (Message::Ready(sender), ProgressState::Ready(receiver))
-                }
-                ProgressState::Ready(mut progress_receiver) => {
-                    let received = progress_receiver.next().await;
-                    if let Some(progress) = received {
-                        tracing::debug!("received progress from yt-dlp: {progress}");
-                        if progress.contains("has already been downloaded") {
-                            progress_receiver.close();
-                            return (
-                                Message::Command(command::Message::AlreadyExists),
-                                ProgressState::Starting,
-                            );
-                        } else if progress.contains("entry does not pass filter (!playlist)") {
-                            progress_receiver.close();
-                            return (
-                                Message::Command(command::Message::PlaylistNotChecked),
-                                ProgressState::Starting,
-                            );
-                        } else if let Some(progress) = progress.strip_prefix("stderr:ERROR") {
-                            return (
-                                Message::Command(command::Message::Error(progress.to_string())),
-                                ProgressState::Ready(progress_receiver),
-                            );
-                        } else {
-                            return (
-                                Message::ProgressEvent(progress),
-                                ProgressState::Ready(progress_receiver),
-                            );
-                        }
-                    }
-
-                    (Message::None, ProgressState::Ready(progress_receiver))
-                }
-            }
-        },
-    )
-}
-
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum Progress {
@@ -84,19 +26,78 @@ pub enum Progress {
     Error(String),
 }
 
-pub fn parse_progress(input: String) -> Vec<Progress> {
-    input
-        .lines()
-        .filter_map(|line| {
-            if line.starts_with("__") {
-                for object in line.split("__") {
-                    let progress = object.replace("NA", "null");
+#[derive(Debug, thiserror::Error)]
+pub enum ProgressError {
+    #[error("File already exists")]
+    AlreadyExists,
+    #[error("Playlist checkbox not checked")]
+    PlaylistNotChecked,
+    #[error("Private video, skipping...")]
+    PrivateVideo,
+    #[error("Video unavailable, skipping...")]
+    VideoUnavailable,
+    #[error("Playlist does not exist")]
+    NoPlaylist,
+    #[error("{0}")]
+    Other(String),
+}
 
-                    return serde_json::from_str::<Progress>(&progress).ok();
+pub fn parse_progress(progress: &str) -> Result<Vec<Progress>, ProgressError> {
+    if progress.contains("has already been downloaded") {
+        return Err(ProgressError::AlreadyExists);
+    } else if progress.contains("entry does not pass filter (!playlist)") {
+        return Err(ProgressError::PlaylistNotChecked);
+    } else if progress.contains("Private video. Sign in if you've been granted access to this video") {
+        return Err(ProgressError::PrivateVideo);
+    } else if progress.contains("Video unavailable. This video contains content") ||
+        progress.contains("Video unavailable. This video is no longer available because the YouTube account associated with this video has been terminated.") {
+        return Err(ProgressError::VideoUnavailable);
+    } else if progress.contains("YouTube said: The playlist does not exist.") {
+        return Err(ProgressError::NoPlaylist);
+    } else if let Some(error) = progress.strip_prefix("stderr:ERROR: ") {
+        return Err(ProgressError::Other(error.to_string()));
+    }
+
+    tracing::debug!("received progress from yt-dlp: {progress}");
+
+    let mut progresses = Vec::new();
+
+    for line in progress.lines() {
+        if line.starts_with("__") {
+            for object in line.split("__") {
+                let progress = object.replace("NA", "null");
+
+                if let Ok(progress) = serde_json::from_str::<Progress>(&progress) {
+                    progresses.push(progress);
                 }
             }
+        }
+    }
 
-            None
-        })
-        .collect::<Vec<Progress>>()
+    Ok(progresses)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parsing_progress() {
+        let progress = r#"__{"type": "downloading","eta": 10, "downloaded_bytes": 62444041,"total_bytes": 198896641, "total_bytes_estimate": NA,"elapsed": 3.448781967163086, "speed": 12773016.258777222, "playlist_count": NA,"playlist_index": NA }"#;
+        let parsed_progress = parse_progress(progress).unwrap();
+
+        assert_eq!(
+            parsed_progress,
+            vec![Progress::Downloading {
+                eta: Some(10.),
+                downloaded_bytes: 62444041.,
+                total_bytes: Some(198896641.),
+                total_bytes_estimate: None,
+                elapsed: 3.448781967163086,
+                speed: Some(12773016.258777222),
+                playlist_count: None,
+                playlist_index: None
+            }]
+        );
+    }
 }
