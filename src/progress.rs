@@ -129,7 +129,7 @@ impl YtGUI {
             return;
         }
 
-        match parse_progress(&progress) {
+        match parse_progress(progress) {
             Ok(progress) => {
                 for progress in progress {
                     match progress {

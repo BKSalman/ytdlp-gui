@@ -91,11 +91,11 @@ impl YtGUI {
                             return window::get_latest().and_then(window::close);
                         }
                         window::Event::Resized(size) => {
-                            self.window_width = size.width as f32;
-                            self.window_height = size.height as f32;
+                            self.window_width = size.width;
+                            self.window_height = size.height;
                         }
                         window::Event::Moved(pos) if self.config.save_window_position => {
-                            self.window_pos = Point::new(pos.x as f32, pos.y as f32);
+                            self.window_pos = Point::new(pos.x, pos.y);
                         }
                         _ => {}
                     }

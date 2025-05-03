@@ -61,7 +61,7 @@ impl Command {
         sender: UnboundedSender<crate::Message>,
         videos_num: usize,
     ) -> Option<Result<String, DownloadError>> {
-        let _ = self.kill();
+        self.kill();
 
         self.videos_num = videos_num;
 
