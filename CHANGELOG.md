@@ -3,7 +3,9 @@
 ## Unversioned
 - Major: Updated to `iced` v0.13
 - Minor: Some changes to the application theme
+- Minor: url passed with `--url` is no longer saved in the config file
 - Dev: add basic test for `yt-dlp` progress parsing
+- Bugfix: Bring back text input focus on startup
 - Bugfix: fix `yt-dlp` progress parsing
 
 ## 2.0.0
