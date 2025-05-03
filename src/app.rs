@@ -174,6 +174,11 @@ impl YtGUI {
                         args.push(self.config.options.audio_quality.options());
                     }
                 }
+                
+                if let Some(cookies_file) = &self.config.cookies_file {
+                    args.push("--cookies");
+                    args.push(cookies_file.to_str().unwrap());
+                }
 
                 let playlist_options =
                     playlist_options(self.is_playlist, self.config.download_folder.clone());
@@ -226,6 +231,27 @@ impl YtGUI {
                 let path = PathBuf::from(file_string);
 
                 self.config.bin_path = Some(path);
+            }
+            Message::SelectCookiesFile => {
+                if !self.is_file_dialog_open {
+                    self.is_file_dialog_open = true;
+
+                    return iced::Task::perform(
+                        choose_file(self.config.cookies_file.clone().unwrap_or("~".into())),
+                        Message::SelectedCookiesFile,
+                    );
+                }
+            }
+            Message::SelectedCookiesFile(file) => {
+                if let Some(path) = file {
+                    self.config.cookies_file = Some(path);
+                }
+                self.is_file_dialog_open = false;
+            }
+            Message::SelectCookiesFileTextInput(cookies_string) => {
+                let path = PathBuf::from(cookies_string);
+
+                self.config.cookies_file = Some(path);
             }
         }
 
@@ -353,7 +379,23 @@ impl YtGUI {
                                 button("Browse").on_press(Message::SelectYtDlpBinPath),
                             ]
                             .spacing(SPACING)
-                            .align_y(iced::Alignment::Center)
+                            .align_y(iced::Alignment::Center),
+                            row![
+                                text("Cookies file: "),
+                                text_input(
+                                    "",
+                                    &self
+                                        .config
+                                        .cookies_file
+                                        .clone()
+                                        .unwrap_or("".into())
+                                        .to_string_lossy()
+                                )
+                                .on_input(Message::SelectCookiesFileTextInput),
+                                button("Browse").on_press(Message::SelectCookiesFile),
+                            ]
+                            .spacing(SPACING)
+                            .align_y(iced::Alignment::Center),
                         ]
                         .width(Length::Fill)
                         .spacing(20)
