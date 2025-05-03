@@ -146,6 +146,7 @@ impl YtGUI {
             window_height: 0.,
             window_width: 0.,
             is_choosing_folder: false,
+            is_choosing_cookies: false,
             window_pos: Point::default(),
         }
     }
