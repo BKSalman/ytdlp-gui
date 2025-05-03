@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-use iced::widget::{
-    button, checkbox, column, container, horizontal_space, pick_list, progress_bar, row, text,
-    text_input,
-};
+use iced::widget::{button, checkbox, column, container, pick_list, row, text, text_input};
 use iced::{window, Event, Length, Point, Subscription};
 use iced_aw::Tabs;
 use url::Url;
@@ -13,11 +10,7 @@ use crate::media_options::{playlist_options, Options};
 use crate::sponsorblock::SponsorBlockOption;
 use crate::theme::{pick_list_menu_style, pick_list_style, tab_bar_style};
 // use crate::widgets::Tabs;
-use crate::{
-    choose_folder,
-    progress::{parse_progress, Progress},
-    Message, WindowPosition, YtGUI,
-};
+use crate::{choose_folder, Message, WindowPosition, YtGUI};
 
 pub const FONT_SIZE: u16 = 18;
 
@@ -82,95 +75,7 @@ impl YtGUI {
             Message::SelectedAudioQuality(quality) => {
                 self.config.options.audio_quality = quality;
             }
-            Message::ProgressEvent(progress) => {
-                if !self.command.is_running() {
-                    return iced::Task::none();
-                }
-
-                match parse_progress(&progress) {
-                    Ok(progress) => {
-                        for progress in progress {
-                            match progress {
-                                Progress::Downloading {
-                                    eta,
-                                    downloaded_bytes,
-                                    total_bytes,
-                                    total_bytes_estimate,
-                                    elapsed: _,
-                                    speed,
-                                    playlist_count,
-                                    playlist_index,
-                                } => {
-                                    self.progress = Some(
-                                        (downloaded_bytes
-                                            / total_bytes
-                                                .unwrap_or(total_bytes_estimate.unwrap_or(0.)))
-                                            * 100.,
-                                    );
-
-                                    if let Some((playlist_count, playlist_index)) =
-                                        playlist_count.zip(playlist_index)
-                                    {
-                                        self.playlist_progress = Some(format!(
-                                            "Downloading {}/{}",
-                                            playlist_index, playlist_count
-                                        ));
-                                    }
-
-                                    // `eta as i64` rounds it
-                                    // for examlpe: 12.368520936129604 as i64 = 12
-                                    let eta = chrono::Duration::seconds(eta.unwrap_or(0.) as i64);
-
-                                    let downloaded_megabytes = downloaded_bytes / 1024_f32.powi(2);
-                                    let total_downloaded = if downloaded_megabytes > 1024. {
-                                        format!("{:.2}GB", downloaded_megabytes / 1024.)
-                                    } else {
-                                        format!("{:.2}MB", downloaded_megabytes)
-                                    };
-
-                                    self.download_message = Some(Ok(format!(
-                                                        "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins:02}:{eta_secs:02}",
-                                                        speed = speed.unwrap_or(0.) / 1024_f32.powi(2),
-                                                        eta_mins = eta.num_minutes(),
-                                                        eta_secs = eta.num_seconds() - (eta.num_minutes() * 60),
-                                                    )));
-                                }
-                                Progress::PostProcessing { status: _ } => {
-                                    self.download_message = Some(Ok(String::from("Processing...")));
-                                }
-                                Progress::EndOfPlaylist => {
-                                    tracing::info!("end of playlist");
-                                    self.command.kill();
-                                    self.progress = None;
-                                    self.download_message =
-                                        Some(Ok(String::from("Finished playlist!")));
-                                    self.log_download();
-                                }
-                                Progress::EndOfVideo => {
-                                    if !self.is_playlist {
-                                        if self.command.is_multiple_videos() {
-                                            self.command.finished_single_video();
-                                        } else {
-                                            self.command.kill();
-                                            self.progress = None;
-                                            self.download_message =
-                                                Some(Ok(String::from("Finished!")));
-                                            self.log_download();
-                                        }
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        self.command.kill();
-                        self.progress = None;
-                        self.download_message = Some(Err(DownloadError::Progress(e)));
-                        self.log_download();
-                    }
-                }
-            }
+            Message::ProgressEvent(progress) => self.handle_progress_event(&progress),
             Message::IcedEvent(event) => {
                 if let Event::Window(window_event) = event {
                     match window_event {
@@ -324,7 +229,7 @@ impl YtGUI {
                     iced_aw::TabLabel::Text("Video".to_string()),
                     column![row![
                         if let Some(download_message) = &self.download_message {
-                            self.show_download_message(download_message)
+                            self.show_download_progress(download_message)
                         } else {
                             column![
                                 Options::video_resolutions(self.config.options.video_resolution),
@@ -340,7 +245,7 @@ impl YtGUI {
                     iced_aw::TabLabel::Text("Audio".to_string()),
                     column![row![
                         if let Some(download_message) = &self.download_message {
-                            self.show_download_message(download_message)
+                            self.show_download_progress(download_message)
                         } else {
                             column![
                                 Options::audio_qualities(self.config.options.audio_quality),
@@ -397,43 +302,10 @@ impl YtGUI {
         iced::event::listen().map(Message::IcedEvent)
     }
 
-    fn show_download_message<'a>(
-        &'a self,
-        download_message: &'a Result<String, DownloadError>,
-    ) -> iced::widget::Column<'a, Message> {
-        match download_message {
-            Ok(download_message) => column![
-                row![
-                    text(download_message).align_x(iced::alignment::Horizontal::Center),
-                    horizontal_space(),
-                    text(self.playlist_progress.as_deref().unwrap_or_default()),
-                    button("X").on_press(Message::StopDownload).padding([5, 25]),
-                ]
-                .spacing(SPACING)
-                .width(iced::Length::Fill)
-                .align_y(iced::Alignment::Center)
-                .padding(12),
-                if let Some(progress) = self.progress {
-                    row![progress_bar(0.0..=100., progress)]
-                        .spacing(SPACING)
-                        .width(iced::Length::Fill)
-                        .align_y(iced::Alignment::Center)
-                        .padding(12)
-                } else {
-                    row![]
-                }
-            ]
-            .width(Length::Fill)
-            .align_x(iced::Alignment::Center),
-            Err(e) => {
-                column![
-                    row![text(e.to_string()).align_x(iced::alignment::Horizontal::Center)]
-                        .spacing(SPACING)
-                        .width(iced::Length::Fill)
-                        .align_y(iced::Alignment::Center)
-                        .padding(12),
-                ]
-            }
-        }
+    pub fn end_download(&mut self, download_message: Option<Result<String, DownloadError>>) {
+        self.command.kill();
+        self.progress = None;
+        self.download_message = download_message;
+        self.log_download();
     }
 }
