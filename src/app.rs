@@ -97,14 +97,17 @@ impl YtGUI {
                         window::Event::Moved(pos) if self.config.save_window_position => {
                             self.window_pos = Point::new(pos.x, pos.y);
                         }
+                        window::Event::Opened {
+                            position: _,
+                            size: _,
+                        } => {
+                            return iced::widget::text_input::focus(
+                                self.download_text_input_id.clone(),
+                            );
+                        }
                         _ => {}
                     }
                 }
-            }
-            Message::None => {}
-            Message::FontLoaded(_) => {
-                // focus download link text input
-                return iced::widget::text_input::focus(self.download_text_input_id.clone());
             }
             Message::StartDownload(link) => {
                 let mut args: Vec<&str> = Vec::new();

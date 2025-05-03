@@ -40,7 +40,6 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    None,
     InputChanged(String),
     TogglePlaylist(bool),
     SelectedSponsorBlockOption(SponsorBlockOption),
@@ -56,7 +55,6 @@ pub enum Message {
     StartDownload(String),
     StopDownload,
     IcedEvent(Event),
-    FontLoaded(Result<(), iced::font::Error>),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
