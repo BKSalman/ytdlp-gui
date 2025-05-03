@@ -14,7 +14,7 @@ use crate::sponsorblock::SponsorBlockOption;
 use crate::theme::{pick_list_menu_style, pick_list_style, tab_bar_style};
 // use crate::widgets::Tabs;
 use crate::{
-    choose_folder,
+    choose_file, choose_folder,
     progress::{parse_progress, Progress},
     Message, WindowPosition, YtGUI,
 };
@@ -27,6 +27,7 @@ pub const SPACING: u16 = 10;
 pub enum Tab {
     Video,
     Audio,
+    Extras,
 }
 
 impl YtGUI {
@@ -129,11 +130,11 @@ impl YtGUI {
                                     };
 
                                     self.download_message = Some(Ok(format!(
-                                                        "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins:02}:{eta_secs:02}",
-                                                        speed = speed.unwrap_or(0.) / 1024_f32.powi(2),
-                                                        eta_mins = eta.num_minutes(),
-                                                        eta_secs = eta.num_seconds() - (eta.num_minutes() * 60),
-                                                    )));
+                                                                "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins:02}:{eta_secs:02}",
+                                                                speed = speed.unwrap_or(0.) / 1024_f32.powi(2),
+                                                                eta_mins = eta.num_minutes(),
+                                                                eta_secs = eta.num_seconds() - (eta.num_minutes() * 60),
+                                                            )));
                                 }
                                 Progress::PostProcessing { status: _ } => {
                                     self.download_message = Some(Ok(String::from("Processing...")));
@@ -256,6 +257,12 @@ impl YtGUI {
                         args.push("--audio-quality");
                         args.push(self.config.options.audio_quality.options());
                     }
+                    Tab::Extras => {
+                        if let Some(cookies_file) = &self.config.cookies_file {
+                            args.push("--cookies");
+                            args.push(&cookies_file);
+                        }
+                    }
                 }
 
                 let playlist_options =
@@ -285,6 +292,30 @@ impl YtGUI {
                 self.command.kill();
                 let _ = self.progress.take();
                 let _ = self.download_message.take();
+            }
+            Message::SelectCookieFile => {
+                if !self.is_choosing_cookies {
+                    self.is_choosing_cookies = true;
+
+                    return iced::Task::perform(
+                        choose_file(
+                            self.config
+                                .cookies_file
+                                .clone()
+                                .unwrap_or_else(|| "~/Cookies file".into()),
+                        ),
+                        Message::SelectedCookieFile,
+                    );
+                }
+            }
+            Message::SelectedCookieFile(file) => {
+                if let Some(path) = file {
+                    self.config.cookies_file = Some(path);
+                }
+                self.is_choosing_cookies = false;
+            }
+            Message::SelectCookiesTextInput(cookies_string) => {
+                self.config.cookies_file = Some(cookies_string);
             }
         }
 
@@ -346,6 +377,33 @@ impl YtGUI {
                                 Options::audio_qualities(self.config.options.audio_quality),
                                 Options::audio_formats(self.config.options.audio_format),
                             ]
+                        }
+                    ]],
+                )
+                .push(
+                    Tab::Extras,
+                    iced_aw::TabLabel::Text("Extras".to_string()),
+                    column![row![
+                        if let Some(download_message) = &self.download_message {
+                            self.show_download_message(download_message)
+                        } else {
+                            column![row![
+                                text("Cookie file: ").size(FONT_SIZE),
+                                text_input(
+                                    "",
+                                    &self
+                                        .config
+                                        .cookies_file
+                                        .clone()
+                                        .unwrap_or_else(|| "~/Cookies file".into())
+                                )
+                                .on_input(Message::SelectCookiesTextInput),
+                                button("Browse").on_press(Message::SelectCookieFile),
+                            ]
+                            .width(iced::Length::Fill)
+                            .spacing(SPACING)
+                            .align_y(iced::Alignment::Center)
+                            .padding(12)]
                         }
                     ]],
                 )

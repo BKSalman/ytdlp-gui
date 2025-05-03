@@ -51,6 +51,9 @@ pub enum Message {
     SelectDownloadFolder,
     SelectedDownloadFolder(Option<PathBuf>),
     SelectFolderTextInput(String),
+    SelectCookieFile,
+    SelectedCookieFile(Option<String>),
+    SelectCookiesTextInput(String),
     SelectTab(Tab),
     ProgressEvent(String),
     StartDownload(String),
@@ -75,6 +78,7 @@ pub struct WindowSize {
 pub struct Config {
     bin_dir: Option<PathBuf>,
     download_folder: Option<PathBuf>,
+    cookies_file: Option<String>,
     #[serde(default)]
     pub save_window_position: bool,
     pub window_position: Option<WindowPosition>,
@@ -107,6 +111,7 @@ pub struct YtGUI {
     playlist_progress: Option<String>,
     download_message: Option<Result<String, DownloadError>>,
     is_choosing_folder: bool,
+    is_choosing_cookies: bool,
     download_text_input_id: iced::widget::text_input::Id,
 
     sender: UnboundedSender<Message>,
@@ -141,6 +146,7 @@ impl YtGUI {
             window_height: 0.,
             window_width: 0.,
             is_choosing_folder: false,
+            is_choosing_cookies: false,
             window_pos: Point::default(),
         }
     }
@@ -171,6 +177,7 @@ impl YtGUI {
                     "{:?}:{:?}",
                     self.config.options.audio_quality, self.config.options.audio_format
                 ),
+                Tab::Extras => format!("{:?}", self.config.cookies_file),
             },
             self.config
                 .download_folder
@@ -189,6 +196,14 @@ async fn choose_folder(starting_dir: impl AsRef<Path>) -> Option<PathBuf> {
         .pick_folder()
         .await
         .map(|f| f.path().to_path_buf())
+}
+
+async fn choose_file(starting_dir: impl AsRef<Path>) -> Option<String> {
+    AsyncFileDialog::new()
+        .set_directory(starting_dir)
+        .pick_file()
+        .await
+        .map(|f| f.path().to_string_lossy().to_string())
 }
 
 pub fn logging() {
