@@ -4,6 +4,7 @@
 - Major: Updated to `iced` v0.13
 - Major: Changed `bin_dir` to `bin_path`; the configuration file now takes the path of the `yt-dlp` binary instead of the directory where it's located
 - Major : Add settings tab to the application with settings for `save_window_position` + `bin_path` in there
+- Minor: Support cookie file selection for bypassing age restrictions when downloading. (thanks to @daem96 #56)
 - Minor: Some changes to the application theme
 - Minor: url passed with `--url` is no longer saved in the config file
 - Bugfix: Bring back text input focus on application startup
