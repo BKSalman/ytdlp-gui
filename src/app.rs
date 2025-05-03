@@ -14,7 +14,7 @@ use crate::sponsorblock::SponsorBlockOption;
 use crate::theme::{pick_list_menu_style, pick_list_style, tab_bar_style};
 // use crate::widgets::Tabs;
 use crate::{
-    choose_folder, choose_file,
+    choose_file, choose_folder,
     progress::{parse_progress, Progress},
     Message, WindowPosition, YtGUI,
 };
@@ -27,6 +27,7 @@ pub const SPACING: u16 = 10;
 pub enum Tab {
     Video,
     Audio,
+    Extras,
 }
 
 impl YtGUI {
@@ -256,6 +257,12 @@ impl YtGUI {
                         args.push("--audio-quality");
                         args.push(self.config.options.audio_quality.options());
                     }
+                    Tab::Extras => {
+                        if let Some(cookies_file) = &self.config.cookies_file {
+                            args.push("--cookies");
+                            args.push(&cookies_file);
+                        }
+                    }
                 }
 
                 let playlist_options =
@@ -308,8 +315,6 @@ impl YtGUI {
                 self.is_choosing_cookies = false;
             }
             Message::SelectCookiesTextInput(cookies_string) => {
-                // let path = PathBuf::from(cookies_string);
-
                 self.config.cookies_file = Some(cookies_string);
             }
         }
@@ -375,6 +380,33 @@ impl YtGUI {
                         }
                     ]],
                 )
+                .push(
+                    Tab::Extras,
+                    iced_aw::TabLabel::Text("Extras".to_string()),
+                    column![row![
+                        if let Some(download_message) = &self.download_message {
+                            self.show_download_message(download_message)
+                        } else {
+                            column![row![
+                                text("Cookie file: ").size(FONT_SIZE),
+                                text_input(
+                                    "",
+                                    &self
+                                        .config
+                                        .cookies_file
+                                        .clone()
+                                        .unwrap_or_else(|| "~/Cookies file".into())
+                                )
+                                .on_input(Message::SelectCookiesTextInput),
+                                button("Browse").on_press(Message::SelectCookieFile),
+                            ]
+                            .width(iced::Length::Fill)
+                            .spacing(SPACING)
+                            .align_y(iced::Alignment::Center)
+                            .padding(12)]
+                        }
+                    ]],
+                )
                 .set_active_tab(&self.active_tab)
                 .height(Length::Shrink)
                 .width(Length::FillPortion(1))
@@ -392,20 +424,6 @@ impl YtGUI {
                 )
                 .on_input(Message::SelectFolderTextInput),
                 button("Browse").on_press(Message::SelectDownloadFolder),
-            ]
-            .spacing(SPACING)
-            .align_y(iced::Alignment::Center),
-            row![
-                text_input(
-                    "",
-                    &self
-                        .config
-                        .cookies_file
-                        .clone()
-                        .unwrap_or_else(|| "~/Cookies file".into())
-                )
-                .on_input(Message::SelectCookiesTextInput),
-                button("Browse").on_press(Message::SelectCookieFile),
             ]
             .spacing(SPACING)
             .align_y(iced::Alignment::Center),
