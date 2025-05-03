@@ -12,7 +12,7 @@ a GUI for yt-dlp written in Rust
 - [Contribution](https://github.com/BKSalman/ytdlp-gui#contribution)
 
 # Preview
-![image](https://github.com/user-attachments/assets/a4662a29-9fb4-4c4a-bac6-3821bfedd23a)
+![image](https://github.com/user-attachments/assets/edeecfe8-4d5b-4f10-b5e3-35188d9a23a5)
 
 
 # Installation
