@@ -4,7 +4,7 @@ use iced::{
     window::{self, Position},
     Point,
 };
-use ytdlp_gui::{git_hash, logging, theme::ytdlp_gui_theme, Config, YtGUI};
+use ytdlp_gui::{git_hash, logging, theme::ytdlp_gui_theme, Config, Flags, YtGUI};
 
 fn main() -> iced::Result {
     let mut args = std::env::args();
@@ -57,13 +57,12 @@ fn main() -> iced::Result {
         },
     };
 
-    let mut config = toml::from_str::<Config>(&config_file).unwrap_or_else(|e| {
+    let config = toml::from_str::<Config>(&config_file).unwrap_or_else(|e| {
         tracing::error!("failed to parse config: {e:#?}");
         let config = Config::default();
         tracing::warn!("falling back to default configs: {config:#?}");
         config
     });
-    config.url = url;
 
     let position = if config.save_window_position {
         if let Some(window_pos) = &config.window_position {
@@ -75,9 +74,12 @@ fn main() -> iced::Result {
         Position::default()
     };
 
+    let flags = Flags { url, config };
+
     iced::application("Youtube Downloader", YtGUI::update, YtGUI::view)
         .window(window::Settings {
-            size: config
+            size: flags
+                .config
                 .window_size
                 .map(|s| iced::Size::new(s.width, s.height))
                 .unwrap_or(iced::Size::new(758., 471.)),
@@ -91,6 +93,6 @@ fn main() -> iced::Result {
         .theme(ytdlp_gui_theme)
         .run_with(|| {
             let (sender, receiver) = iced::futures::channel::mpsc::unbounded();
-            (YtGUI::new(config, sender), iced::Task::stream(receiver))
+            (YtGUI::new(flags, sender), iced::Task::stream(receiver))
         })
 }

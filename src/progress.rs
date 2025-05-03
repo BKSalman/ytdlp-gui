@@ -1,4 +1,10 @@
+use crate::DownloadError;
+use iced::widget::{button, column, horizontal_space, progress_bar, row, text};
+use iced::Length;
+
 use serde::{Deserialize, Serialize};
+
+use crate::{app::SPACING, Message, YtGUI};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(tag = "type")]
@@ -75,6 +81,126 @@ pub fn parse_progress(progress: &str) -> Result<Vec<Progress>, ProgressError> {
     }
 
     Ok(progresses)
+}
+
+impl YtGUI {
+    pub fn show_download_progress<'a>(
+        &'a self,
+        download_message: &'a Result<String, DownloadError>,
+    ) -> iced::widget::Column<'a, Message> {
+        match download_message {
+            Ok(download_message) => column![
+                row![
+                    text(download_message).align_x(iced::alignment::Horizontal::Center),
+                    horizontal_space(),
+                    text(self.playlist_progress.as_deref().unwrap_or_default()),
+                    button("X").on_press(Message::StopDownload).padding([5, 25]),
+                ]
+                .spacing(SPACING)
+                .width(iced::Length::Fill)
+                .align_y(iced::Alignment::Center)
+                .padding(12),
+                if let Some(progress) = self.progress {
+                    row![progress_bar(0.0..=100., progress)]
+                        .spacing(SPACING)
+                        .width(iced::Length::Fill)
+                        .align_y(iced::Alignment::Center)
+                        .padding(12)
+                } else {
+                    row![]
+                }
+            ]
+            .width(Length::Fill)
+            .align_x(iced::Alignment::Center),
+            Err(e) => {
+                column![
+                    row![text(e.to_string()).align_x(iced::alignment::Horizontal::Center)]
+                        .spacing(SPACING)
+                        .width(iced::Length::Fill)
+                        .align_y(iced::Alignment::Center)
+                        .padding(12),
+                ]
+            }
+        }
+    }
+
+    pub fn handle_progress_event(&mut self, progress: &str) {
+        if !self.command.is_running() {
+            return;
+        }
+
+        match parse_progress(progress) {
+            Ok(progress) => {
+                for progress in progress {
+                    match progress {
+                        Progress::Downloading {
+                            eta,
+                            downloaded_bytes,
+                            total_bytes,
+                            total_bytes_estimate,
+                            elapsed: _,
+                            speed,
+                            playlist_count,
+                            playlist_index,
+                        } => {
+                            self.progress = Some(
+                                (downloaded_bytes
+                                    / total_bytes.unwrap_or(total_bytes_estimate.unwrap_or(0.)))
+                                    * 100.,
+                            );
+
+                            if let Some((playlist_count, playlist_index)) =
+                                playlist_count.zip(playlist_index)
+                            {
+                                self.playlist_progress = Some(format!(
+                                    "Downloading {}/{}",
+                                    playlist_index, playlist_count
+                                ));
+                            }
+
+                            // `eta as i64` rounds it
+                            // for examlpe: 12.368520936129604 as i64 = 12
+                            let eta = chrono::Duration::seconds(eta.unwrap_or(0.) as i64);
+
+                            let downloaded_megabytes = downloaded_bytes / 1024_f32.powi(2);
+                            let total_downloaded = if downloaded_megabytes > 1024. {
+                                format!("{:.2}GB", downloaded_megabytes / 1024.)
+                            } else {
+                                format!("{:.2}MB", downloaded_megabytes)
+                            };
+
+                            self.download_message = Some(Ok(format!(
+                                                        "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins:02}:{eta_secs:02}",
+                                                        speed = speed.unwrap_or(0.) / 1024_f32.powi(2),
+                                                        eta_mins = eta.num_minutes(),
+                                                        eta_secs = eta.num_seconds() - (eta.num_minutes() * 60),
+                                                    )));
+                        }
+                        Progress::PostProcessing { status: _ } => {
+                            self.download_message = Some(Ok(String::from("Processing...")));
+                        }
+                        Progress::EndOfPlaylist => {
+                            tracing::info!("end of playlist");
+                            self.end_download(Some(Ok(String::from("Finished playlist!"))));
+                        }
+                        Progress::EndOfVideo => {
+                            if !self.is_playlist {
+                                if self.command.is_multiple_videos() {
+                                    self.command.finished_single_video();
+                                } else {
+                                    self.end_download(Some(Ok(String::from("Finished!"))));
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Err(e) => {
+                self.end_download(Some(Err(DownloadError::Progress(e))));
+            }
+        }
+    }
 }
 
 #[cfg(test)]

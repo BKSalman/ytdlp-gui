@@ -236,11 +236,8 @@ impl Options {
     }
 }
 
-pub fn playlist_options(is_playlist: bool, download_folder: Option<PathBuf>) -> Vec<String> {
-    let download_dir = download_folder
-        .unwrap_or_else(|| "~/Videos".into())
-        .to_string_lossy()
-        .to_string();
+pub fn playlist_options(is_playlist: bool, download_folder: PathBuf) -> Vec<String> {
+    let download_dir = download_folder.to_string_lossy().to_string();
 
     if is_playlist {
         vec![

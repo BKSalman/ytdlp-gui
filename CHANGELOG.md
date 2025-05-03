@@ -2,9 +2,13 @@
 
 ## Unversioned
 - Major: Updated to `iced` v0.13
+- Major: Changed `bin_dir` to `bin_path`; the configuration file now takes the path of the `yt-dlp` binary instead of the directory where it's located
+- Major : Add settings tab to the application with settings for `save_window_position` + `bin_path` in there
 - Minor: Some changes to the application theme
-- Dev: add basic test for `yt-dlp` progress parsing
+- Minor: url passed with `--url` is no longer saved in the config file
+- Bugfix: Bring back text input focus on application startup
 - Bugfix: fix `yt-dlp` progress parsing
+- Dev: add basic test for `yt-dlp` progress parsing
 
 ## 2.0.0
 
