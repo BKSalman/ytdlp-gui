@@ -71,6 +71,12 @@ pub struct WindowSize {
     pub height: f32,
 }
 
+#[derive(Debug)]
+pub struct Flags {
+    pub url: Option<String>,
+    pub config: Config,
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Config {
     bin_dir: Option<PathBuf>,
@@ -79,14 +85,11 @@ pub struct Config {
     pub save_window_position: bool,
     pub window_position: Option<WindowPosition>,
     pub window_size: Option<WindowSize>,
-    pub url: Option<String>,
     options: Options,
 }
 
 impl Config {
     fn update_config_file(&mut self) -> io::Result<()> {
-        // FIXME: hacky solution, make it better by not including url into `Config`
-        self.url = None;
         let current_config = toml::to_string(self).expect("config to string");
         let config_file = dirs::config_dir()
             .expect("config directory")
@@ -119,7 +122,7 @@ pub struct YtGUI {
 
 impl YtGUI {
     pub fn new(
-        flags: Config,
+        flags: Flags,
         progress_sender: iced::futures::channel::mpsc::UnboundedSender<Message>,
     ) -> Self {
         tracing::info!("config loaded: {flags:#?}");
@@ -128,7 +131,7 @@ impl YtGUI {
             download_link: flags.url.clone().unwrap_or_default(),
             is_playlist: Default::default(),
             sponsorblock: Default::default(),
-            config: flags,
+            config: flags.config,
 
             active_tab: Tab::Video,
             playlist_progress: None,
