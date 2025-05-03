@@ -2,9 +2,9 @@
 
 use iced::{
     window::{self, Position},
-    Application, Point, Settings,
+    Point,
 };
-use ytdlp_gui::{git_hash, logging, Config, YtGUI};
+use ytdlp_gui::{git_hash, logging, theme::ytdlp_gui_theme, Config, YtGUI};
 
 fn main() -> iced::Result {
     let mut args = std::env::args();
@@ -75,9 +75,8 @@ fn main() -> iced::Result {
         Position::default()
     };
 
-    let settings = Settings {
-        id: Some(String::from("ytdlp-gui")),
-        window: window::Settings {
+    iced::application("Youtube Downloader", YtGUI::update, YtGUI::view)
+        .window(window::Settings {
             size: config
                 .window_size
                 .map(|s| iced::Size::new(s.width, s.height))
@@ -86,10 +85,12 @@ fn main() -> iced::Result {
             exit_on_close_request: false,
             position,
             ..Default::default()
-        },
-        flags: config,
-        ..Default::default()
-    };
-
-    YtGUI::run(settings)
+        })
+        .subscription(YtGUI::subscription)
+        .font(iced_fonts::REQUIRED_FONT_BYTES)
+        .theme(ytdlp_gui_theme)
+        .run_with(|| {
+            let (sender, receiver) = iced::futures::channel::mpsc::unbounded();
+            (YtGUI::new(config, sender), iced::Task::stream(receiver))
+        })
 }
