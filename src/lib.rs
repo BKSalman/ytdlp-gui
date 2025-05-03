@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-use app::Tab;
+use app::{DownloadType, Tab};
 use error::DownloadError;
 #[cfg(feature = "explain")]
 use iced::Color;
@@ -13,6 +13,7 @@ use iced::futures::channel::mpsc::UnboundedSender;
 use iced::{Event, Point};
 
 use rfd::AsyncFileDialog;
+use serde::de::IntoDeserializer;
 use serde::{Deserialize, Serialize};
 
 mod app;
@@ -49,12 +50,16 @@ pub enum Message {
     SelectedAudioQuality(AudioQuality),
     SelectDownloadFolder,
     SelectedDownloadFolder(Option<PathBuf>),
-    SelectFolderTextInput(String),
+    SelectDownloadFolderTextInput(String),
     SelectTab(Tab),
     ProgressEvent(String),
     StartDownload(String),
     StopDownload,
     IcedEvent(Event),
+    ToggleSaveWindowPosition(bool),
+    SelectYtDlpBinPath,
+    SelectedYtDlpBinPath(Option<PathBuf>),
+    SelectYtDlpBitPathTextInput(String),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -75,10 +80,29 @@ pub struct Flags {
     pub config: Config,
 }
 
+fn download_folder_default() -> PathBuf {
+    "~/Videos".into()
+}
+
+fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    let opt = Option::<String>::deserialize(de)?;
+    let opt = opt.as_deref();
+    match opt {
+        None | Some("") => Ok(None),
+        Some(s) => T::deserialize(s.into_deserializer()).map(Some),
+    }
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Config {
-    bin_dir: Option<PathBuf>,
-    download_folder: Option<PathBuf>,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    bin_path: Option<PathBuf>,
+    #[serde(default = "download_folder_default")]
+    download_folder: PathBuf,
     #[serde(default)]
     pub save_window_position: bool,
     pub window_position: Option<WindowPosition>,
@@ -105,9 +129,10 @@ pub struct YtGUI {
     config: Config,
 
     active_tab: Tab,
+    download_type: DownloadType,
     playlist_progress: Option<String>,
     download_message: Option<Result<String, DownloadError>>,
-    is_choosing_folder: bool,
+    is_file_dialog_open: bool,
     download_text_input_id: iced::widget::text_input::Id,
 
     sender: UnboundedSender<Message>,
@@ -132,6 +157,7 @@ impl YtGUI {
             config: flags.config,
 
             active_tab: Tab::Video,
+            download_type: DownloadType::Video,
             playlist_progress: None,
             download_message: Default::default(),
             download_text_input_id: iced::widget::text_input::Id::unique(),
@@ -141,7 +167,7 @@ impl YtGUI {
             progress: None,
             window_height: 0.,
             window_width: 0.,
-            is_choosing_folder: false,
+            is_file_dialog_open: false,
             window_pos: Point::default(),
         }
     }
@@ -163,21 +189,17 @@ impl YtGUI {
             "{}::{}::{}::{}",
             Local::now(),
             self.download_link,
-            match self.active_tab {
-                Tab::Video => format!(
+            match self.download_type {
+                DownloadType::Video => format!(
                     "{:?}:{:?}",
                     self.config.options.video_resolution, self.config.options.video_format
                 ),
-                Tab::Audio => format!(
+                DownloadType::Audio => format!(
                     "{:?}:{:?}",
                     self.config.options.audio_quality, self.config.options.audio_format
                 ),
             },
-            self.config
-                .download_folder
-                .clone()
-                .unwrap_or_else(|| "~/Videos".into())
-                .to_string_lossy()
+            self.config.download_folder.to_string_lossy()
         ) {
             tracing::error!("failed to log download: {e}");
         }
@@ -188,6 +210,14 @@ async fn choose_folder(starting_dir: impl AsRef<Path>) -> Option<PathBuf> {
     AsyncFileDialog::new()
         .set_directory(starting_dir)
         .pick_folder()
+        .await
+        .map(|f| f.path().to_path_buf())
+}
+
+async fn choose_file(starting_dir: impl AsRef<Path>) -> Option<PathBuf> {
+    AsyncFileDialog::new()
+        .set_directory(starting_dir)
+        .pick_file()
         .await
         .map(|f| f.path().to_path_buf())
 }

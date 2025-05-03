@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
-use iced::widget::{button, checkbox, column, container, pick_list, row, text, text_input};
+use iced::widget::{
+    button, checkbox, column, container, pick_list, row, scrollable, text, text_input,
+};
 use iced::{window, Event, Length, Point, Subscription};
 use iced_aw::Tabs;
 use url::Url;
@@ -10,16 +12,23 @@ use crate::media_options::{playlist_options, Options};
 use crate::sponsorblock::SponsorBlockOption;
 use crate::theme::{pick_list_menu_style, pick_list_style, tab_bar_style};
 // use crate::widgets::Tabs;
-use crate::{choose_folder, Message, WindowPosition, YtGUI};
+use crate::{choose_file, choose_folder, Message, WindowPosition, YtGUI};
 
 pub const FONT_SIZE: u16 = 18;
 
 pub const SPACING: u16 = 10;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+pub enum DownloadType {
+    Video,
+    Audio,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Tab {
     Video,
     Audio,
+    Settings,
 }
 
 impl YtGUI {
@@ -41,33 +50,33 @@ impl YtGUI {
                 self.config.options.video_format = format;
             }
             Message::SelectDownloadFolder => {
-                if !self.is_choosing_folder {
-                    self.is_choosing_folder = true;
+                if !self.is_file_dialog_open {
+                    self.is_file_dialog_open = true;
 
                     return iced::Task::perform(
-                        choose_folder(
-                            self.config
-                                .download_folder
-                                .clone()
-                                .unwrap_or_else(|| "~/Videos".into()),
-                        ),
+                        choose_folder(self.config.download_folder.clone()),
                         Message::SelectedDownloadFolder,
                     );
                 }
             }
             Message::SelectedDownloadFolder(folder) => {
                 if let Some(path) = folder {
-                    self.config.download_folder = Some(path);
+                    self.config.download_folder = path;
                 }
-                self.is_choosing_folder = false;
+                self.is_file_dialog_open = false;
             }
-            Message::SelectFolderTextInput(folder_string) => {
+            Message::SelectDownloadFolderTextInput(folder_string) => {
                 let path = PathBuf::from(folder_string);
 
-                self.config.download_folder = Some(path);
+                self.config.download_folder = path;
             }
             Message::SelectTab(selected_tab) => {
                 self.active_tab = selected_tab;
+                match self.active_tab {
+                    Tab::Video => self.download_type = DownloadType::Video,
+                    Tab::Audio => self.download_type = DownloadType::Audio,
+                    _ => {}
+                }
             }
             Message::SelectedAudioFormat(format) => {
                 self.config.options.audio_format = format;
@@ -136,8 +145,8 @@ impl YtGUI {
                     links_num = i + 1;
                 }
 
-                match self.active_tab {
-                    Tab::Video => {
+                match self.download_type {
+                    DownloadType::Video => {
                         args.push("-S");
 
                         args.push(self.config.options.video_resolution.options());
@@ -152,7 +161,7 @@ impl YtGUI {
 
                         tracing::info!("{args:#?}");
                     }
-                    Tab::Audio => {
+                    DownloadType::Audio => {
                         // Audio tab
 
                         // Extract audio from Youtube video
@@ -184,7 +193,7 @@ impl YtGUI {
 
                 self.download_message = self.command.start(
                     args,
-                    self.config.bin_dir.clone(),
+                    self.config.bin_path.clone(),
                     self.sender.clone(),
                     links_num,
                 );
@@ -193,6 +202,30 @@ impl YtGUI {
                 self.command.kill();
                 let _ = self.progress.take();
                 let _ = self.download_message.take();
+            }
+            Message::ToggleSaveWindowPosition(save_window_position) => {
+                self.config.save_window_position = save_window_position;
+            }
+            Message::SelectYtDlpBinPath => {
+                if !self.is_file_dialog_open {
+                    self.is_file_dialog_open = true;
+
+                    return iced::Task::perform(
+                        choose_file(self.config.bin_path.clone().unwrap_or("~".into())),
+                        Message::SelectedYtDlpBinPath,
+                    );
+                }
+            }
+            Message::SelectedYtDlpBinPath(file) => {
+                if let Some(path) = file {
+                    self.config.bin_path = Some(path);
+                }
+                self.is_file_dialog_open = false;
+            }
+            Message::SelectYtDlpBitPathTextInput(file_string) => {
+                let path = PathBuf::from(file_string);
+
+                self.config.bin_path = Some(path);
             }
         }
 
@@ -229,9 +262,9 @@ impl YtGUI {
             Tabs::new(Message::SelectTab)
                 .push(
                     Tab::Video,
-                    iced_aw::TabLabel::Text("Video".to_string()),
-                    column![row![
-                        if let Some(download_message) = &self.download_message {
+                    iced_aw::TabLabel::Text(String::from("Video")),
+                    column![
+                        row![if let Some(download_message) = &self.download_message {
                             self.show_download_progress(download_message)
                         } else {
                             column![
@@ -239,49 +272,99 @@ impl YtGUI {
                                 Options::video_formats(self.config.options.video_format),
                             ]
                             .width(Length::Fill)
-                        }
-                    ]]
+                        }],
+                        column![
+                            row![
+                                text_input("", &self.config.download_folder.to_string_lossy())
+                                    .on_input(Message::SelectDownloadFolderTextInput),
+                                button("Browse").on_press(Message::SelectDownloadFolder),
+                            ]
+                            .spacing(SPACING)
+                            .align_y(iced::Alignment::Center),
+                            row![if !self.command.is_running() {
+                                button("Download")
+                                    .on_press(Message::StartDownload(self.download_link.clone()))
+                            } else {
+                                button("Download")
+                            }]
+                        ]
+                        .width(Length::Fill)
+                        .align_x(iced::Alignment::Center)
+                        .spacing(20)
+                        .padding(20)
+                    ]
                     .width(Length::Fill),
                 )
                 .push(
                     Tab::Audio,
-                    iced_aw::TabLabel::Text("Audio".to_string()),
-                    column![row![
-                        if let Some(download_message) = &self.download_message {
+                    iced_aw::TabLabel::Text(String::from("Audio")),
+                    column![
+                        row![if let Some(download_message) = &self.download_message {
                             self.show_download_progress(download_message)
                         } else {
                             column![
                                 Options::audio_qualities(self.config.options.audio_quality),
                                 Options::audio_formats(self.config.options.audio_format),
                             ]
-                        }
-                    ]],
+                        }],
+                        column![
+                            row![
+                                text_input("", &self.config.download_folder.to_string_lossy())
+                                    .on_input(Message::SelectDownloadFolderTextInput),
+                                button("Browse").on_press(Message::SelectDownloadFolder),
+                            ]
+                            .spacing(SPACING)
+                            .align_y(iced::Alignment::Center),
+                            row![if !self.command.is_running() {
+                                button("Download")
+                                    .on_press(Message::StartDownload(self.download_link.clone()))
+                            } else {
+                                button("Download")
+                            }]
+                        ]
+                        .width(Length::Fill)
+                        .align_x(iced::Alignment::Center)
+                        .spacing(20)
+                        .padding(20)
+                    ],
+                )
+                .push(
+                    Tab::Settings,
+                    iced_aw::TabLabel::Text(String::from("Settings")),
+                    scrollable(
+                        column![
+                            row![checkbox(
+                                "Save window position",
+                                self.config.save_window_position
+                            )
+                            .on_toggle(Message::ToggleSaveWindowPosition)],
+                            row![
+                                text("yt-dlp binary path:"),
+                                text_input(
+                                    "Keep empty to use the system-wide binary",
+                                    &self
+                                        .config
+                                        .bin_path
+                                        .clone()
+                                        .unwrap_or("".into())
+                                        .to_string_lossy()
+                                )
+                                .on_input(Message::SelectYtDlpBitPathTextInput),
+                                button("Browse").on_press(Message::SelectYtDlpBinPath),
+                            ]
+                            .spacing(SPACING)
+                            .align_y(iced::Alignment::Center)
+                        ]
+                        .width(Length::Fill)
+                        .spacing(20)
+                        .padding(20)
+                    )
                 )
                 .set_active_tab(&self.active_tab)
                 .height(Length::Shrink)
                 .width(Length::FillPortion(1))
                 .tab_bar_width(Length::FillPortion(1))
                 .tab_bar_style(tab_bar_style),
-            row![
-                text_input(
-                    "",
-                    &self
-                        .config
-                        .download_folder
-                        .clone()
-                        .unwrap_or_else(|| "~/Videos".into())
-                        .to_string_lossy()
-                )
-                .on_input(Message::SelectFolderTextInput),
-                button("Browse").on_press(Message::SelectDownloadFolder),
-            ]
-            .spacing(SPACING)
-            .align_y(iced::Alignment::Center),
-            row![if self.progress.is_none() {
-                button("Download").on_press(Message::StartDownload(self.download_link.clone()))
-            } else {
-                button("Download")
-            }]
         ]
         .width(Length::Fill)
         .align_x(iced::Alignment::Center)
@@ -297,7 +380,6 @@ impl YtGUI {
         container(content)
             .height(Length::Fill)
             .width(Length::Fill)
-            .center_y(Length::Fill)
             .into()
     }
 

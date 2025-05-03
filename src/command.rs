@@ -57,7 +57,7 @@ impl Command {
     pub fn start(
         &mut self,
         mut args: Vec<&str>,
-        bin_dir: Option<PathBuf>,
+        bin_path: Option<PathBuf>,
         sender: UnboundedSender<crate::Message>,
         videos_num: usize,
     ) -> Option<Result<String, DownloadError>> {
@@ -65,7 +65,7 @@ impl Command {
 
         self.videos_num = videos_num;
 
-        let mut command = std::process::Command::new(bin_dir.unwrap_or_default().join("yt-dlp"));
+        let mut command = std::process::Command::new(bin_path.unwrap_or("yt-dlp".into()));
 
         #[cfg(target_os = "windows")]
         {
@@ -161,9 +161,6 @@ impl Command {
 
                     buffer.clear();
                 }
-                // sender
-                //     .unbounded_send(String::from("Finished"))
-                //     .unwrap_or_else(|e| tracing::error!(r#"failed to send "Finished": {e}"#));
             });
         }
 
