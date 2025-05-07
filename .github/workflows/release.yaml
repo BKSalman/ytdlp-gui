@@ -23,7 +23,7 @@ jobs:
         build: [stable]
         include:
           - build: stable
-            os: ubuntu-20.04
+            os: ubuntu-24.04
             rust: stable
     steps:
       - name: Checkout repository
