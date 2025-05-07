@@ -9,8 +9,9 @@ use std::{
 use iced::futures::channel::mpsc::UnboundedSender;
 
 use crate::error::DownloadError;
+
 #[cfg(target_os = "windows")]
-use crate::CREATE_NO_WINDOW;
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Default)]
 pub struct Command {

@@ -36,9 +36,6 @@ use tracing_subscriber::EnvFilter;
 use crate::media_options::Options;
 use crate::media_options::{AudioFormat, AudioQuality, VideoFormat, VideoResolution};
 
-#[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x08000000;
-
 #[derive(Debug, Clone)]
 pub enum Message {
     InputChanged(String),
@@ -202,7 +199,7 @@ impl YtGUI {
                 DownloadType::Audio => format!(
                     "{:?}:{:?}",
                     self.config.options.audio_quality, self.config.options.audio_format
-                )
+                ),
             },
             self.config.download_folder.to_string_lossy()
         ) {
