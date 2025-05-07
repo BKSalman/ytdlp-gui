@@ -1,6 +1,6 @@
 # Changelog
 
-## Unversioned
+## 3.0.0
 - Major: Updated to `iced` v0.13
 - Major: Changed `bin_dir` to `bin_path`; the configuration file now takes the path of the `yt-dlp` binary instead of the directory where it's located
 - Major : Add settings tab to the application with settings for `save_window_position` + `bin_path` in there

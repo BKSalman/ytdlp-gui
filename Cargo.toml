@@ -1,8 +1,8 @@
 [package]
 name = "ytdlp-gui"
-version = "2.0.0"
+version = "3.0.0"
 edition = "2021"
-description = "a GUI for yt-dlp written in Rust"
+description = "a very simple GUI for ytdlp written in Rust"
 license = "GPL-3.0"
 repository = "https://github.com/BKSalman/ytdlp-gui"
 homepage = "https://github.com/BKSalman"
