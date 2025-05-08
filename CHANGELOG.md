@@ -1,5 +1,8 @@
 # Changelog
 
+## Unversioned
+- Bugfix: fix the issue where the config file won't load properly (and fallback to the default config) when `bin_path` and `cookies_file` keys are absent from the config file
+
 ## 3.0.0
 - Major: Updated to `iced` v0.13
 - Major: Changed `bin_dir` to `bin_path`; the configuration file now takes the path of the `yt-dlp` binary instead of the directory where it's located
