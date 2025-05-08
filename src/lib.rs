@@ -99,11 +99,11 @@ where
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Config {
-    #[serde(deserialize_with = "empty_string_as_none")]
+    #[serde(default, deserialize_with = "empty_string_as_none")]
     bin_path: Option<PathBuf>,
     #[serde(default = "download_folder_default")]
     download_folder: PathBuf,
-    #[serde(deserialize_with = "empty_string_as_none")]
+    #[serde(default, deserialize_with = "empty_string_as_none")]
     cookies_file: Option<PathBuf>,
     #[serde(default)]
     pub save_window_position: bool,
