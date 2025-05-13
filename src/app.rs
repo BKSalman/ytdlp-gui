@@ -301,7 +301,7 @@ impl YtGUI {
                         }],
                         column![
                             row![
-                                text_input("Destination path (leave blank for .exe's folder)", &self.config.download_folder.to_string_lossy())
+                                text_input("Destination path (leave blank for current working directory)", &self.config.download_folder.to_string_lossy())
                                     .on_input(Message::SelectDownloadFolderTextInput),
                                 button("Browse").on_press(Message::SelectDownloadFolder),
                             ]
