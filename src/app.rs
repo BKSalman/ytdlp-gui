@@ -119,6 +119,14 @@ impl YtGUI {
                 }
             }
             Message::StartDownload(link) => {
+                if !self.config.download_folder.exists() {
+                    self.progress = None;
+                    self.download_message = Some(Err(DownloadError::DownloadDir(
+                        self.config.download_folder.clone(),
+                    )));
+                    return iced::Task::none();
+                }
+
                 let mut args: Vec<&str> = Vec::new();
 
                 let mut links_num = 0;
@@ -174,7 +182,7 @@ impl YtGUI {
                         args.push(self.config.options.audio_quality.options());
                     }
                 }
-                
+
                 if let Some(cookies_file) = &self.config.cookies_file {
                     args.push("--cookies");
                     args.push(cookies_file.to_str().unwrap());
@@ -301,8 +309,11 @@ impl YtGUI {
                         }],
                         column![
                             row![
-                                text_input("Destination path (leave blank for current working directory)", &self.config.download_folder.to_string_lossy())
-                                    .on_input(Message::SelectDownloadFolderTextInput),
+                                text_input(
+                                    "Destination path (leave blank for current working directory)",
+                                    &self.config.download_folder.to_string_lossy()
+                                )
+                                .on_input(Message::SelectDownloadFolderTextInput),
                                 button("Browse").on_press(Message::SelectDownloadFolder),
                             ]
                             .spacing(SPACING)
