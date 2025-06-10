@@ -1,6 +1,8 @@
 # Changelog
 
-## Unversioned
+## 3.0.1
+- Minor: Prevent ytdlp-gui from creating a new directory if it doesn't exist
+- Minor: Add label to file path textbox (Thanks to @YourUnravelling! #59)
 - Bugfix: fix the issue where the config file won't load properly (and fallback to the default config) when `bin_path` and `cookies_file` keys are absent from the config file
 
 ## 3.0.0
