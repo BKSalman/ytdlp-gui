@@ -36,6 +36,12 @@ fn main() -> iced::Result {
 
     logging();
 
+    // Get the system's preferred languages.
+    let requested_languages = i18n_embed::DesktopLanguageRequester::requested_languages();
+
+    // Enable localizations to be applied.
+    ytdlp_gui::i18n::init(&requested_languages);
+
     let config_dir = dirs::config_dir()
         .expect("config directory")
         .join("ytdlp-gui/");

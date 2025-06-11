@@ -12,6 +12,7 @@ use crate::media_options::{playlist_options, Options};
 use crate::sponsorblock::SponsorBlockOption;
 use crate::theme::{pick_list_menu_style, pick_list_style, tab_bar_style};
 // use crate::widgets::Tabs;
+use crate::fl;
 use crate::{choose_file, choose_folder, Message, WindowPosition, YtGUI};
 
 pub const FONT_SIZE: u16 = 18;
@@ -296,7 +297,7 @@ impl YtGUI {
             Tabs::new(Message::SelectTab)
                 .push(
                     Tab::Video,
-                    iced_aw::TabLabel::Text(String::from("Video")),
+                    iced_aw::TabLabel::Text(fl!("video")),
                     column![
                         row![if let Some(download_message) = &self.download_message {
                             self.show_download_progress(download_message)
@@ -319,10 +320,10 @@ impl YtGUI {
                             .spacing(SPACING)
                             .align_y(iced::Alignment::Center),
                             row![if !self.command.is_running() {
-                                button("Download")
+                                button(text(fl!("download")))
                                     .on_press(Message::StartDownload(self.download_link.clone()))
                             } else {
-                                button("Download")
+                                button(text(fl!("download")))
                             }]
                         ]
                         .width(Length::Fill)
@@ -334,7 +335,7 @@ impl YtGUI {
                 )
                 .push(
                     Tab::Audio,
-                    iced_aw::TabLabel::Text(String::from("Audio")),
+                    iced_aw::TabLabel::Text(fl!("audio")),
                     column![
                         row![if let Some(download_message) = &self.download_message {
                             self.show_download_progress(download_message)
@@ -367,7 +368,7 @@ impl YtGUI {
                 )
                 .push(
                     Tab::Settings,
-                    iced_aw::TabLabel::Text(String::from("Settings")),
+                    iced_aw::TabLabel::Text(fl!("settings")),
                     scrollable(
                         column![
                             row![checkbox(

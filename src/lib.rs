@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 mod app;
 pub mod command;
 mod error;
+pub mod i18n;
 pub mod media_options;
 pub mod progress;
 mod sponsorblock;
