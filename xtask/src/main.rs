@@ -2,73 +2,60 @@ use anyhow::{anyhow, Context};
 use cargo_metadata::MetadataCommand;
 use sha2::Digest;
 use std::io::{BufRead, Write};
-use std::str::FromStr;
 use std::{fs::File, process::ExitCode};
-use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
+use toml_edit::DocumentMut;
 
 use xtask::{cargo, git, unzip, zip_dir, CommandExt};
 
-#[derive(EnumString, EnumIter, Display, Debug, PartialEq)]
-#[strum(serialize_all = "snake_case")]
-enum Task {
-    PackageRPM,
-    PackageDEB,
-    PackageLinux,
-    PackageLinuxAll,
-    PackageWindows,
-    PackageAUR,
-    PublishAUR,
+mod flags {
+    xflags::xflags! {
+        cmd app {
+            cmd package-rpm {}
+            cmd package-deb {}
+            cmd package-linux {}
+            cmd package-linux-all {}
+            cmd package-windows {}
+            cmd package-aur {
+                /// Specify rel for PKGBUILD (only works package_aur task).
+                optional -r,--rel rel: u8
+            }
+            cmd publish-aur {
+                /// AUR package commit message.
+                optional -m,--message message: String
+            }
+            cmd new-version {
+                required version: String
+                /// Specify rel for PKGBUILD (only works package_aur task).
+                optional -r,--rel rel: u8
+                /// AUR package commit message.
+                optional -m,--message message: String
+            }
+        }
+    }
 }
 
 fn main() -> ExitCode {
-    let flags = xflags::parse_or_exit! {
-        /// List all available tasks.
-        optional -l,--list
-        /// The task to run.
-        optional task: String
+    let flags = flags::App::from_env_or_exit();
 
-        /// AUR package commit message.
-        optional -m,--message message: String
-        /// Specify rel for PKGBUILD (only works package_aur task).
-        optional -r,--rel rel: u8
-    };
-
-    if !flags.list && flags.task.is_none() {
-        eprintln!("No arguments were passed\nuse --help to see options");
+    if let Err(e) = std::fs::create_dir_all("packages") {
+        eprintln!("Failed to create packages directory: {e}");
         return ExitCode::FAILURE;
     }
 
-    if let Some(task) = flags.task {
-        let Ok(task) = Task::from_str(&task) else {
-            eprintln!("Invalid task");
-            return ExitCode::FAILURE;
-        };
+    let res = match flags.subcommand {
+        flags::AppCmd::PackageRpm(_package_rpm) => crate::package_rpm(),
+        flags::AppCmd::PackageDeb(_package_deb) => crate::package_deb(),
+        flags::AppCmd::PackageLinux(_package_linux) => crate::package_linux(),
+        flags::AppCmd::PackageLinuxAll(_package_linux_all) => crate::package_linux_all(),
+        flags::AppCmd::PackageWindows(_package_windows) => crate::package_windows(),
+        flags::AppCmd::PackageAur(package_aur) => crate::package_aur(package_aur.rel),
+        flags::AppCmd::PublishAur(publish_aur) => crate::publish_aur(publish_aur.message),
+        flags::AppCmd::NewVersion(new_version) => crate::new_version(new_version),
+    };
 
-        if let Err(e) = std::fs::create_dir_all("packages") {
-            eprintln!("Failed to create packages directory: {e}");
-            return ExitCode::FAILURE;
-        }
-
-        let res = match task {
-            Task::PackageWindows => package_windows(),
-            Task::PackageRPM => package_rpm(),
-            Task::PackageDEB => package_deb(),
-            Task::PackageLinux => package_linux(),
-            Task::PackageLinuxAll => package_linux_all(),
-            Task::PackageAUR => package_aur(flags.rel),
-            Task::PublishAUR => publish_aur(flags.message),
-        };
-
-        if let Err(e) = res {
-            eprintln!("Failed to run task: {e}");
-            return ExitCode::FAILURE;
-        }
-    } else if flags.list {
-        println!("\nAvailable tasks:\n");
-
-        Task::iter().for_each(|t| {
-            println!("    {t}");
-        });
+    if let Err(e) = res {
+        eprintln!("{e}");
+        return ExitCode::FAILURE;
     }
 
     ExitCode::SUCCESS
@@ -225,6 +212,24 @@ fn package_aur(rel: Option<u8>) -> anyhow::Result<()> {
     let aur_path = ytdlp_gui_path.join("aur");
     let pkgbuild_path = aur_path.join("PKGBUILD");
 
+    let sha256 = {
+        let file_name = format!("v{version}.tar.gz");
+        let source_code = minreq::get(format!(
+            "https://github.com/BKSalman/ytdlp-gui/archive/refs/tags/{}",
+            file_name
+        ))
+        .send()
+        .context("failed to get source code from github")?
+        .into_bytes();
+
+        println!("Downloaded source code of tag {file_name}");
+
+        let sha = sha2::Sha256::digest(source_code);
+        let hex = hex::encode(sha);
+        println!("sha256 of source code: {hex}");
+        hex
+    };
+
     let pkgbuild = std::fs::read_to_string(&pkgbuild_path)?;
 
     let pkgbuild = pkgbuild
@@ -233,22 +238,7 @@ fn package_aur(rel: Option<u8>) -> anyhow::Result<()> {
             if line.starts_with("pkgver=") {
                 final_str.push_str(&format!("pkgver={}\n", version));
             } else if line.starts_with("sha256sums=") {
-                let file_name = format!("v{version}.tar.gz");
-                let source_code = minreq::get(format!(
-                    "https://github.com/BKSalman/ytdlp-gui/archive/refs/tags/{}",
-                    file_name
-                ))
-                .send()
-                .context("failed to get source code from github")?
-                .into_bytes();
-
-                println!("downloaded source code of tag {file_name}");
-
-                let sha = sha2::Sha256::digest(source_code);
-                let hex = hex::encode(sha);
-                println!("sha256 of source code: {hex}");
-
-                final_str.push_str(&format!("sha256sums=(\"{}\")\n", hex));
+                final_str.push_str(&format!("sha256sums=(\"{}\")\n", sha256));
             } else if line.starts_with("pkgrel") {
                 if let Some(rel) = rel {
                     final_str.push_str(&format!("pkgrel={}\n", rel));
@@ -286,6 +276,8 @@ fn package_aur(rel: Option<u8>) -> anyhow::Result<()> {
         .with_args([&pkgbuild_path.display().to_string(), "--printsrc"])
         .run_with_output("Printing to .SRCINFO\n")?;
 
+    let srcinfo = String::from_utf8_lossy(&srcinfo.stdout).to_string();
+
     println!("srcinfo:\n\n{srcinfo}");
 
     std::env::set_current_dir(old_current_dir)?;
@@ -318,7 +310,7 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
 
     stdin.read_line(&mut buf)?;
 
-    if buf.to_lowercase() == "n\n" {
+    if buf.to_lowercase() != "y\n" {
         return Ok(());
     }
 
@@ -352,8 +344,8 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
             &format!("ssh://aur@aur.archlinux.org/{pkgname}.git"),
             "ytdlp-gui-aur",
         ])
-        .run_with_output("Clone AUR package")?;
-    println!("git clone stdout:\n{}", clone_output);
+        .run_with_piped_output("Clone AUR package")?;
+    println!("git clone output:\n{:?}", clone_output);
 
     println!("Copying PKGBUILD and .SRCINFO to {}", temp_aur.display());
     std::fs::copy(pkgbuild_path, temp_aur.join("PKGBUILD")).context("failed to copy PKGBUILD")?;
@@ -363,8 +355,8 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
 
     let add_output = git("add")
         .with_args(["-v", "."])
-        .run_with_output("Add AUR changes")?;
-    println!("git add stdout:\n{}", add_output);
+        .run_with_piped_output("Add AUR changes")?;
+    println!("git add output:\n{:?}", add_output);
 
     let commit_output = git("commit")
         .with_args([
@@ -375,12 +367,117 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
                 message.unwrap_or(String::new())
             ),
         ])
-        .run_with_output("Commiting AUR changes")
+        .run_with_piped_output("Commiting AUR changes")
         .context("failed to commit AUR changes")?;
-    println!("git commit stdout:\n{}", commit_output);
+    println!("git commit output:\n{:?}", commit_output);
 
-    let push_output = git("push").run_with_output("Pushing to AUR")?;
-    println!("git push stdout:\n{}", push_output);
+    let push_output = git("push").run_with_piped_output("Pushing to AUR")?;
+    println!("git push output:\n{:?}", push_output);
+
+    Ok(())
+}
+
+fn new_version(new_version: flags::NewVersion) -> anyhow::Result<()> {
+    let mut ytdlp_gui_path = std::env::current_dir()?;
+    if ytdlp_gui_path.ends_with("xtask") {
+        ytdlp_gui_path.pop();
+    }
+    let manifest_path = ytdlp_gui_path.join("Cargo.toml");
+    let lock_file_path = ytdlp_gui_path.join("Cargo.lock");
+    let metadata = MetadataCommand::new()
+        .manifest_path(&manifest_path)
+        .exec()
+        .unwrap();
+
+    let root_package = metadata.root_package().unwrap();
+
+    let old_version = root_package.version.to_string();
+
+    println!("old version: {old_version}");
+    println!("Checking if new version is valid...");
+    cargo_metadata::semver::Version::parse(&new_version.version)?;
+    println!("new version: {}", new_version.version);
+
+    println!("Do you want to proceed with the new version? [Y/n]");
+
+    {
+        let mut stdin = std::io::stdin().lock();
+
+        let mut buf = String::new();
+
+        stdin.read_line(&mut buf)?;
+
+        if buf.to_lowercase() == "n\n" {
+            return Ok(());
+        } else if buf.to_lowercase() != "\n" && buf.to_lowercase() != "y\n" {
+            return Err(anyhow!("Please enter y or n"));
+        }
+    }
+
+    println!("Changing Cargo.toml version to {}...", new_version.version);
+    let manifest_edit = std::fs::read_to_string(&manifest_path)?;
+    let mut manifest_edit = manifest_edit.parse::<DocumentMut>()?;
+    manifest_edit["package"]["version"] = toml_edit::value(&new_version.version);
+
+    std::fs::write(&manifest_path, manifest_edit.to_string())?;
+    println!("Changed Cargo.toml version to {} ✅", new_version.version);
+
+    // Update Cargo.lock to reflect the new version
+    println!("Updating Cargo.lock...");
+    std::env::set_current_dir(&ytdlp_gui_path)?;
+    cargo("check").run("Updating Cargo.lock with new version")?;
+    println!("Updated Cargo.lock ✅");
+
+    git("diff")
+        .with_args([
+            manifest_path.display().to_string(),
+            lock_file_path.display().to_string(),
+        ])
+        .run_with_piped_output("Diff:\n")?;
+
+    println!("Do you want to commit the new diff? [Y/n]");
+
+    {
+        let mut stdin = std::io::stdin().lock();
+
+        let mut buf = String::new();
+
+        stdin.read_line(&mut buf)?;
+
+        if buf.to_lowercase() == "n\n" {
+            return Ok(());
+        } else if buf.to_lowercase() != "\n" && buf.to_lowercase() != "y\n" {
+            return Err(anyhow!("Please enter y or n"));
+        }
+    }
+
+    println!("Pushing new version to Github");
+
+    git("add")
+        .with_args([
+            manifest_path.display().to_string(),
+            lock_file_path.display().to_string(),
+        ])
+        .run("git add")?;
+    git("commit")
+        .with_args([
+            String::from("-m"),
+            format!("bump version to {}", new_version.version),
+        ])
+        .run("git commit")
+        .ok();
+    git("tag")
+        .with_arg(&format!("v{}", new_version.version))
+        .run("git tag")
+        .ok();
+    git("push").run("git push")?;
+    git("push").with_arg("--tags").run("git push --tags")?;
+
+    println!("Packaging application for AUR");
+    package_aur(new_version.rel)?;
+
+    println!("Publishing AUR package");
+    publish_aur(new_version.message)?;
 
     Ok(())
 }

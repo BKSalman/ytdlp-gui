@@ -17,7 +17,8 @@ pub trait CommandExt {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>;
     fn run(self, msg: &str) -> anyhow::Result<()>;
-    fn run_with_output(self, msg: &str) -> anyhow::Result<String>;
+    fn run_with_piped_output(self, msg: &str) -> anyhow::Result<()>;
+    fn run_with_output(self, msg: &str) -> anyhow::Result<std::process::Output>;
 }
 
 impl CommandExt for Command {
@@ -42,14 +43,29 @@ impl CommandExt for Command {
         self.spawn()?.wait()?.check()
     }
 
-    fn run_with_output(mut self, msg: &str) -> anyhow::Result<String> {
+    fn run_with_piped_output(mut self, msg: &str) -> anyhow::Result<()> {
+        println!("{msg}");
+        let output = self
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .output()?;
+        if let Err(e) = output.check().context("failed to run command") {
+            println!("stderr:\n\t{}", String::from_utf8_lossy(&output.stderr));
+            return Err(e);
+        }
+
+        Ok(())
+    }
+
+    fn run_with_output(mut self, msg: &str) -> anyhow::Result<std::process::Output> {
         println!("{msg}");
         let output = self.output()?;
         if let Err(e) = output.check().context("failed to run command") {
             println!("stderr:\n\t{}", String::from_utf8_lossy(&output.stderr));
             return Err(e);
         }
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+
+        Ok(output)
     }
 }
 
