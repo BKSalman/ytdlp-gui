@@ -107,26 +107,9 @@ cargo r -r
 
 # Configuration
 
-For v0.2.2+ the application saves configuration in the default config directory for the respective platform/OS in ``<config_dir>/ytdlp-gui/config.toml``
+Since `v3.0.0` the application has a settings tab which will contain the settings that the user will most likely want to configure
 
-the default file looks like this:
-
-```toml
-# Optional
-# This is the directory of the bin, not the bin itself
-# bin_path = "<some_cool_path>" # (0.2.4)
-
-bin_dir = "<some_cool_path>" # (0.2.5+) if not set the command will be `yt-dlp <app_args>`
-
-# Optional
-download_folder = "<some_cool_path>" # default = "~/Videos"
-
-[options]
-video_resolution = "FullHD" # options: "Sd" "Hd" "FullHD" "TwoK" "FourK"
-video_format = "Mp4" # options: "Mp4" "Mkv" "Webm"
-audio_quality = "Good" # options: "Best" "Good" "Medium" "Low"
-audio_format = "Mp3" #  options: "Mp3" "Wav" "Vorbis" "M4a" "Opus"
-```
+The settings are located in `<config_dir>/ytdlp-gui/config.toml`
 
 ### Note: the quality/format options get automatically saved when pressing the download button
 
