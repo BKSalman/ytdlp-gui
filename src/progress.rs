@@ -113,13 +113,15 @@ impl YtGUI {
             .width(Length::Fill)
             .align_x(iced::Alignment::Center),
             Err(e) => {
-                column![
-                    row![text(e.to_string()).align_x(iced::alignment::Horizontal::Center)]
-                        .spacing(SPACING)
-                        .width(iced::Length::Fill)
-                        .align_y(iced::Alignment::Center)
-                        .padding(12),
+                column![row![
+                    text(e.to_string()).align_x(iced::alignment::Horizontal::Center),
+                    horizontal_space(),
+                    button("X").on_press(Message::StopDownload).padding([5, 25]),
                 ]
+                .spacing(SPACING)
+                .width(iced::Length::Fill)
+                .align_y(iced::Alignment::Center)
+                .padding(12),]
             }
         }
     }
