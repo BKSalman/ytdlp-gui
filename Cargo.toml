@@ -17,21 +17,21 @@ members = [
 ]
 
 [dependencies]
-chrono = { version = "0.4.23", default-features = false, features = ["clock"] }
-dirs = "4.0.0"
+chrono = { version = "0.4.41", default-features = false, features = ["clock"] }
+dirs = "6.0.0"
 iced = { version = "0.13.1" }
 iced_aw = { version = "0.12", features = ["tabs"], default-features = false }
 iced_fonts = "0.1.1"
-rfd = "0.13"
-serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.104"
-shared_child = "1.0.0"
-thiserror = "2.0.11"
-toml = "0.5.10"
-tracing = "0.1.37"
-tracing-appender = "0.2.2"
-tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-url = "2.4.0"
+rfd = "0.15"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+shared_child = "1"
+thiserror = "2"
+toml = "0.8.23"
+tracing = "0.1.41"
+tracing-appender = "0.2.3"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+url = "2.5.4"
 i18n-embed-fl = "0.9.2"
 rust-embed = "8.7.2"
 shellexpand = { version = "3.1.1", default-features = false, features = ["base-0", "tilde"] }
