@@ -66,8 +66,16 @@ impl YtGUI {
                 }
                 self.is_file_dialog_open = false;
             }
-            Message::SelectDownloadFolderTextInput(folder_string) => {
-                let path = PathBuf::from(folder_string);
+            Message::DownloadFolderTextInput(folder_string) => {
+                let path = PathBuf::from(&folder_string.to_string());
+
+                self.config.download_folder = path;
+            }
+            Message::SelectDownloadFolderTextInput => {
+                let path = PathBuf::from(
+                    shellexpand::tilde(&self.config.download_folder.display().to_string())
+                        .to_string(),
+                );
 
                 self.config.download_folder = path;
             }
@@ -120,6 +128,11 @@ impl YtGUI {
                 }
             }
             Message::StartDownload(link) => {
+                self.config.download_folder = PathBuf::from(
+                    shellexpand::tilde(&self.config.download_folder.display().to_string())
+                        .to_string(),
+                );
+
                 if !self.config.download_folder.exists() {
                     self.progress = None;
                     self.download_message = Some(Err(DownloadError::DownloadDir(
@@ -312,9 +325,10 @@ impl YtGUI {
                             row![
                                 text_input(
                                     "Destination path (leave blank for current working directory)",
-                                    &self.config.download_folder.to_string_lossy()
+                                    &self.config.download_folder.display().to_string()
                                 )
-                                .on_input(Message::SelectDownloadFolderTextInput),
+                                .on_input(Message::DownloadFolderTextInput)
+                                .on_submit(Message::SelectDownloadFolderTextInput),
                                 button("Browse").on_press(Message::SelectDownloadFolder),
                             ]
                             .spacing(SPACING)
@@ -347,8 +361,12 @@ impl YtGUI {
                         }],
                         column![
                             row![
-                                text_input("", &self.config.download_folder.to_string_lossy())
-                                    .on_input(Message::SelectDownloadFolderTextInput),
+                                text_input(
+                                    "Destination path (leave blank for current working directory)",
+                                    &self.config.download_folder.display().to_string()
+                                )
+                                .on_input(Message::DownloadFolderTextInput)
+                                .on_submit(Message::SelectDownloadFolderTextInput),
                                 button("Browse").on_press(Message::SelectDownloadFolder),
                             ]
                             .spacing(SPACING)

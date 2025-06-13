@@ -48,7 +48,8 @@ pub enum Message {
     SelectedAudioQuality(AudioQuality),
     SelectDownloadFolder,
     SelectedDownloadFolder(Option<PathBuf>),
-    SelectDownloadFolderTextInput(String),
+    DownloadFolderTextInput(String),
+    SelectDownloadFolderTextInput,
     SelectTab(Tab),
     ProgressEvent(String),
     StartDownload(String),
@@ -82,7 +83,7 @@ pub struct Flags {
 }
 
 fn download_folder_default() -> PathBuf {
-    "~/Videos".into()
+    shellexpand::tilde("~/Videos").to_string().into()
 }
 
 fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
