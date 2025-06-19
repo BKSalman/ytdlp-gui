@@ -14,6 +14,7 @@ use crate::theme::{pick_list_menu_style, pick_list_style, tab_bar_style};
 // use crate::widgets::Tabs;
 use crate::fl;
 use crate::{choose_file, choose_folder, Message, WindowPosition, YtGUI};
+use notify_rust::Notification;
 
 pub const FONT_SIZE: u16 = 18;
 
@@ -464,5 +465,19 @@ impl YtGUI {
         self.progress = None;
         self.download_message = download_message;
         self.log_download();
+        match &self.download_message {
+            Some(Ok(_download_message)) =>{
+                let _ = Notification::new()
+                        .summary("Download has finished")
+                        .show();
+            }
+
+            Some(Err(e)) => {
+                let _ = Notification::new()
+                        .summary(&e.to_string())
+                        .show();
+            }
+            None => {} 
+        }
     }
 }
