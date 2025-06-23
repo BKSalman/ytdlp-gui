@@ -466,18 +466,13 @@ impl YtGUI {
         self.download_message = download_message;
         self.log_download();
         match &self.download_message {
-            Some(Ok(_download_message)) =>{
-                let _ = Notification::new()
-                        .summary("Download has finished")
-                        .show();
+            Some(Ok(download_message)) => {
+                let _ = Notification::new().summary(download_message).show();
             }
-
             Some(Err(e)) => {
-                let _ = Notification::new()
-                        .summary(&e.to_string())
-                        .show();
+                let _ = Notification::new().summary(&e.to_string()).show();
             }
-            None => {} 
+            None => {}
         }
     }
 }
