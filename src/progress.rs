@@ -183,14 +183,18 @@ impl YtGUI {
                         }
                         Progress::EndOfPlaylist => {
                             tracing::info!("end of playlist");
-                            self.end_download(Some(Ok(String::from("Finished playlist!"))));
+                            self.end_download(Some(Ok(String::from(
+                                "Playlist download has finished!",
+                            ))));
                         }
                         Progress::EndOfVideo => {
                             if !self.is_playlist {
                                 if self.command.is_multiple_videos() {
                                     self.command.finished_single_video();
                                 } else {
-                                    self.end_download(Some(Ok(String::from("Finished!"))));
+                                    self.end_download(Some(Ok(String::from(
+                                        "Download has finished!",
+                                    ))));
                                 }
                             }
                         }
