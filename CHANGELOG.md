@@ -1,5 +1,11 @@
 # Changelog
 
+## Unversioned
+- Minor: Add the base for localization using [Fluent](https://projectfluent.org/) (contributions are very much welcome!!)
+- Minor: Add a notification for downloads (Thanks to @iKetsui! @62)
+- Minor: Add X button to errors
+- Minor: expand tilde `~` when used in the download path text input
+
 ## 3.0.1
 - Minor: Prevent ytdlp-gui from creating a new directory if it doesn't exist
 - Minor: Add label to file path textbox (Thanks to @YourUnravelling! #59)
