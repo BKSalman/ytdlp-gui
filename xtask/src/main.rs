@@ -344,7 +344,7 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
             &format!("ssh://aur@aur.archlinux.org/{pkgname}.git"),
             "ytdlp-gui-aur",
         ])
-        .run_with_piped_output("Clone AUR package")?;
+        .run_with_inherited_output("Clone AUR package")?;
     println!("git clone output:\n{:?}", clone_output);
 
     println!("Copying PKGBUILD and .SRCINFO to {}", temp_aur.display());
@@ -355,7 +355,7 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
 
     let add_output = git("add")
         .with_args(["-v", "."])
-        .run_with_piped_output("Add AUR changes")?;
+        .run_with_inherited_output("Add AUR changes")?;
     println!("git add output:\n{:?}", add_output);
 
     let commit_output = git("commit")
@@ -367,11 +367,11 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
                 message.unwrap_or(String::new())
             ),
         ])
-        .run_with_piped_output("Commiting AUR changes")
+        .run_with_inherited_output("Commiting AUR changes")
         .context("failed to commit AUR changes")?;
     println!("git commit output:\n{:?}", commit_output);
 
-    let push_output = git("push").run_with_piped_output("Pushing to AUR")?;
+    let push_output = git("push").run_with_inherited_output("Pushing to AUR")?;
     println!("git push output:\n{:?}", push_output);
 
     Ok(())
@@ -433,7 +433,7 @@ fn new_version(new_version: flags::NewVersion) -> anyhow::Result<()> {
             manifest_path.display().to_string(),
             lock_file_path.display().to_string(),
         ])
-        .run_with_piped_output("Diff:\n")?;
+        .run_with_inherited_output("Diff:\n")?;
 
     println!("Do you want to commit the new diff? [Y/n]");
 
