@@ -1,6 +1,9 @@
 # Changelog
 
-## Unversioned
+## 3.1.1
+Dev: fix CI
+
+## 3.1.0
 - Minor: Add the base for localization using [Fluent](https://projectfluent.org/) (contributions are very much welcome!!)
 - Minor: Add a notification for downloads (Thanks to @iKetsui! @62)
 - Minor: Add X button to errors
