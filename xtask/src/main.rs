@@ -256,14 +256,18 @@ fn package_aur(rel: Option<u8>) -> anyhow::Result<()> {
 
     println!("Do you want to proceed with printing to .SRCINFO? [Y/n]");
 
-    let mut stdin = std::io::stdin().lock();
+    {
+        let mut stdin = std::io::stdin().lock();
 
-    let mut buf = String::new();
+        let mut buf = String::new();
 
-    stdin.read_line(&mut buf)?;
+        stdin.read_line(&mut buf)?;
 
-    if buf.to_lowercase() == "n\n" {
-        return Ok(());
+        if buf.to_lowercase() == "n\n" {
+            return Ok(());
+        } else if buf.to_lowercase() != "\n" && buf.to_lowercase() != "y\n" {
+            return Err(anyhow!("Please enter y or n"));
+        }
     }
 
     std::fs::write(&pkgbuild_path, pkgbuild)?;
@@ -304,14 +308,18 @@ fn publish_aur(message: Option<String>) -> anyhow::Result<()> {
 
     println!("Do you want to proceed with publishing the package? [Y/n]");
 
-    let mut stdin = std::io::stdin().lock();
+    {
+        let mut stdin = std::io::stdin().lock();
 
-    let mut buf = String::new();
+        let mut buf = String::new();
 
-    stdin.read_line(&mut buf)?;
+        stdin.read_line(&mut buf)?;
 
-    if buf.to_lowercase() != "y\n" {
-        return Ok(());
+        if buf.to_lowercase() == "n\n" {
+            return Ok(());
+        } else if buf.to_lowercase() != "\n" && buf.to_lowercase() != "y\n" {
+            return Err(anyhow!("Please enter y or n"));
+        }
     }
 
     let pkgname = pkgbuild
