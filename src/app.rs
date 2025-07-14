@@ -283,7 +283,7 @@ impl YtGUI {
 
     pub fn view(&self) -> iced::Element<Message> {
         let content: iced::Element<Message> = column![
-            row![text_input("Download link", &self.download_link)
+            row![text_input(&fl!("download_link"), &self.download_link)
                 .on_input(Message::InputChanged)
                 .on_submit(Message::StartDownload(self.download_link.clone(),))
                 .size(FONT_SIZE)
@@ -325,12 +325,12 @@ impl YtGUI {
                         column![
                             row![
                                 text_input(
-                                    "Destination path (leave blank for current working directory)",
+                                    &fl!("download_path"),
                                     &self.config.download_folder.display().to_string()
                                 )
                                 .on_input(Message::DownloadFolderTextInput)
                                 .on_submit(Message::SelectDownloadFolderTextInput),
-                                button("Browse").on_press(Message::SelectDownloadFolder),
+                                button(text(fl!("browse"))).on_press(Message::SelectDownloadFolder),
                             ]
                             .spacing(SPACING)
                             .align_y(iced::Alignment::Center),
@@ -363,20 +363,20 @@ impl YtGUI {
                         column![
                             row![
                                 text_input(
-                                    "Destination path (leave blank for current working directory)",
+                                    &fl!("download_path"),
                                     &self.config.download_folder.display().to_string()
                                 )
                                 .on_input(Message::DownloadFolderTextInput)
                                 .on_submit(Message::SelectDownloadFolderTextInput),
-                                button("Browse").on_press(Message::SelectDownloadFolder),
+                                button(text(fl!("browse"))).on_press(Message::SelectDownloadFolder),
                             ]
                             .spacing(SPACING)
                             .align_y(iced::Alignment::Center),
                             row![if !self.command.is_running() {
-                                button("Download")
+                                button(text(fl!("download")))
                                     .on_press(Message::StartDownload(self.download_link.clone()))
                             } else {
-                                button("Download")
+                                button(text(fl!("download")))
                             }]
                         ]
                         .width(Length::Fill)
@@ -391,14 +391,14 @@ impl YtGUI {
                     scrollable(
                         column![
                             row![checkbox(
-                                "Save window position",
+                                fl!("save_window_position"),
                                 self.config.save_window_position
                             )
                             .on_toggle(Message::ToggleSaveWindowPosition)],
                             row![
-                                text("yt-dlp binary path:"),
+                                text(format!("{}: ", fl!("ytdlp_path"))),
                                 text_input(
-                                    "Keep empty to use the system-wide binary",
+                                    &fl!("ytdlp_path_leave_empty"),
                                     &self
                                         .config
                                         .bin_path
@@ -407,12 +407,12 @@ impl YtGUI {
                                         .to_string_lossy()
                                 )
                                 .on_input(Message::SelectYtDlpBitPathTextInput),
-                                button("Browse").on_press(Message::SelectYtDlpBinPath),
+                                button(text(fl!("browse"))).on_press(Message::SelectYtDlpBinPath),
                             ]
                             .spacing(SPACING)
                             .align_y(iced::Alignment::Center),
                             row![
-                                text("Cookies file: "),
+                                text(fl!("cookies_file")),
                                 text_input(
                                     "",
                                     &self
@@ -423,7 +423,7 @@ impl YtGUI {
                                         .to_string_lossy()
                                 )
                                 .on_input(Message::SelectCookiesFileTextInput),
-                                button("Browse").on_press(Message::SelectCookiesFile),
+                                button(text(fl!("browse"))).on_press(Message::SelectCookiesFile),
                             ]
                             .spacing(SPACING)
                             .align_y(iced::Alignment::Center),

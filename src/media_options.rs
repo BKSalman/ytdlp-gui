@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app::{FONT_SIZE, SPACING},
+    fl,
     theme::{pick_list_menu_style, pick_list_style},
     Message,
 };
@@ -70,10 +71,10 @@ pub enum AudioQuality {
 impl core::fmt::Display for AudioQuality {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AudioQuality::Best => write!(f, "Best"),
-            AudioQuality::Good => write!(f, "Good"),
-            AudioQuality::Medium => write!(f, "Medium"),
-            AudioQuality::Low => write!(f, "Low"),
+            AudioQuality::Best => f.write_str(&fl!("quality_best")),
+            AudioQuality::Good => f.write_str(&fl!("quality_good")),
+            AudioQuality::Medium => f.write_str(&fl!("quality_medium")),
+            AudioQuality::Low => f.write_str(&fl!("quality_low")),
         }
     }
 }
@@ -148,7 +149,7 @@ impl AudioQuality {
 impl Options {
     pub fn video_resolutions(resolution: VideoResolution) -> iced::widget::Row<'static, Message> {
         row![
-            text("Resolution: ").size(FONT_SIZE),
+            text(format!("{}: ", fl!("resolution"))).size(FONT_SIZE),
             pick_list(
                 vec![
                     VideoResolution::FourK,
@@ -172,7 +173,7 @@ impl Options {
 
     pub fn video_formats(format: VideoFormat) -> iced::widget::Row<'static, Message> {
         row![
-            text("Preferred Format: ").size(FONT_SIZE),
+            text(format!("{}: ", fl!("preferred_format"))).size(FONT_SIZE),
             pick_list(
                 vec![VideoFormat::Mp4, VideoFormat::Mkv, VideoFormat::Webm],
                 Some(format),
@@ -190,7 +191,7 @@ impl Options {
 
     pub fn audio_formats(format: AudioFormat) -> iced::widget::Row<'static, Message> {
         row![
-            text("Preferred Format: ").size(FONT_SIZE),
+            text(format!("{}: ", fl!("preferred_format"))).size(FONT_SIZE),
             pick_list(
                 vec![
                     AudioFormat::Mp3,
@@ -214,7 +215,7 @@ impl Options {
 
     pub fn audio_qualities(quality: AudioQuality) -> iced::widget::Row<'static, Message> {
         row![
-            text("Quality: ").size(FONT_SIZE),
+            text(format!("{}: ", fl!("quality"))).size(FONT_SIZE),
             pick_list(
                 vec![
                     AudioQuality::Best,
