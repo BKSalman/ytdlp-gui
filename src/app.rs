@@ -182,7 +182,7 @@ impl YtGUI {
 
                         args.push(self.config.options.video_format.options());
 
-                        tracing::info!("{args:#?}");
+                        tracing::debug!("{args:#?}");
                     }
                     DownloadType::Audio => {
                         // Audio tab

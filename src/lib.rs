@@ -99,19 +99,33 @@ where
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(default)]
 pub struct Config {
-    #[serde(default, deserialize_with = "empty_string_as_none")]
+    #[serde(deserialize_with = "empty_string_as_none")]
     bin_path: Option<PathBuf>,
     #[serde(default = "download_folder_default")]
     download_folder: PathBuf,
-    #[serde(default, deserialize_with = "empty_string_as_none")]
+    #[serde(deserialize_with = "empty_string_as_none")]
     cookies_file: Option<PathBuf>,
-    #[serde(default)]
     pub save_window_position: bool,
     pub window_position: Option<WindowPosition>,
     pub window_size: Option<WindowSize>,
     options: Options,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            bin_path: Default::default(),
+            download_folder: download_folder_default(),
+            cookies_file: Default::default(),
+            save_window_position: Default::default(),
+            window_position: Default::default(),
+            window_size: Default::default(),
+            options: Default::default(),
+        }
+    }
 }
 
 impl Config {

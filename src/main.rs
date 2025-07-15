@@ -48,27 +48,24 @@ fn main() -> iced::Result {
 
     std::fs::create_dir_all(&config_dir).expect("create config dir");
 
-    let config_file = match std::fs::read_to_string(config_dir.join("config.toml")) {
-        Ok(file) => file,
+    let config = match std::fs::read_to_string(config_dir.join("config.toml")) {
+        Ok(config_str) => toml::from_str::<Config>(&config_str).unwrap_or_else(|e| {
+            tracing::error!("failed to parse config: {e:#?}");
+            let config = Config::default();
+            tracing::warn!("falling back to default configs: {config:#?}");
+            config
+        }),
         Err(e) => match e.kind() {
             std::io::ErrorKind::NotFound => {
-                tracing::warn!("Config file not found, creating a default config file...");
-                let new_config = toml::to_string(&Config::default()).expect("Config to string");
-                std::fs::write(config_dir.join("config.toml"), &new_config)
-                    .expect("create new config file");
-
-                new_config
+                let config = Config::default();
+                tracing::warn!(
+                    "Config file not found, falling back to default configs: {config:#?}"
+                );
+                config
             }
             _ => panic!("{e}"),
         },
     };
-
-    let config = toml::from_str::<Config>(&config_file).unwrap_or_else(|e| {
-        tracing::error!("failed to parse config: {e:#?}");
-        let config = Config::default();
-        tracing::warn!("falling back to default configs: {config:#?}");
-        config
-    });
 
     let position = if config.save_window_position {
         if let Some(window_pos) = &config.window_position {
