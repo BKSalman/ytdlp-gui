@@ -1,6 +1,6 @@
 # Changelog
 
-## Unversioned
+## 3.1.2
 - Minor: change missleading text in download path text input
 - Minor: use proper config defaults when config file is not present
 
