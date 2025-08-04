@@ -116,6 +116,6 @@ The settings are located in `<config_dir>/ytdlp-gui/config.toml`
 # Contribution
 All contribution forms are welcomed, whether it's Pull requests, Issues (bug reports/enhancement requests)
 
-However, I might not be quick to reply to them, or implement the requested stuff, since I'm focusing on other things
+However, I might not be quick to reply to them, or implement the requested stuff
 
 But I will do my best 👍
