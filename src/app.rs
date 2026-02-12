@@ -3,22 +3,22 @@ use std::path::PathBuf;
 use iced::widget::{
     button, checkbox, column, container, pick_list, row, scrollable, text, text_input,
 };
-use iced::{window, Event, Length, Point, Subscription};
+use iced::{Event, Length, Point, Subscription, window};
 use iced_aw::Tabs;
 use url::Url;
 
 use crate::error::DownloadError;
-use crate::media_options::{playlist_options, Options};
+use crate::media_options::{Options, playlist_options};
 use crate::sponsorblock::SponsorBlockOption;
 use crate::theme::{pick_list_menu_style, pick_list_style, tab_bar_style};
 // use crate::widgets::Tabs;
 use crate::fl;
-use crate::{choose_file, choose_folder, Message, WindowPosition, YtGUI};
+use crate::{Message, WindowPosition, YtGUI, choose_file, choose_folder};
 use notify_rust::Notification;
 
-pub const FONT_SIZE: u16 = 18;
+pub const FONT_SIZE: f32 = 18.;
 
-pub const SPACING: u16 = 10;
+pub const SPACING: f32 = 10.;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DownloadType {
@@ -107,7 +107,7 @@ impl YtGUI {
                             if let Err(e) = self.config.update_config_file() {
                                 tracing::error!("Failed to update config file: {e}");
                             }
-                            return window::get_latest().and_then(window::close);
+                            return window::latest().and_then(|id| window::close(id));
                         }
                         window::Event::Resized(size) => {
                             self.window_width = size.width;
@@ -120,7 +120,7 @@ impl YtGUI {
                             position: _,
                             size: _,
                         } => {
-                            return iced::widget::text_input::focus(
+                            return iced::widget::operation::focus(
                                 self.download_text_input_id.clone(),
                             );
                         }
@@ -281,14 +281,16 @@ impl YtGUI {
         iced::Task::none()
     }
 
-    pub fn view(&self) -> iced::Element<Message> {
+    pub fn view(&self) -> iced::Element<'_, Message> {
         let content: iced::Element<Message> = column![
-            row![text_input(&fl!("download_link"), &self.download_link)
-                .on_input(Message::InputChanged)
-                .on_submit(Message::StartDownload(self.download_link.clone(),))
-                .size(FONT_SIZE)
-                .width(Length::Fill)
-                .id(self.download_text_input_id.clone()),]
+            row![
+                text_input(&fl!("download_link"), &self.download_link)
+                    .on_input(Message::InputChanged)
+                    .on_submit(Message::StartDownload(self.download_link.clone(),))
+                    .size(FONT_SIZE)
+                    .width(Length::Fill)
+                    .id(self.download_text_input_id.clone()),
+            ]
             .spacing(7)
             .align_y(iced::Alignment::Center),
             row![
@@ -304,7 +306,9 @@ impl YtGUI {
                 ]
                 .spacing(4)
                 .align_y(iced::Alignment::Center),
-                checkbox("Playlist", self.is_playlist).on_toggle(Message::TogglePlaylist),
+                checkbox(self.is_playlist)
+                    .label("Playlist")
+                    .on_toggle(Message::TogglePlaylist),
             ]
             .spacing(7)
             .align_y(iced::Alignment::Center),
@@ -390,11 +394,11 @@ impl YtGUI {
                     iced_aw::TabLabel::Text(fl!("settings")),
                     scrollable(
                         column![
-                            row![checkbox(
-                                fl!("save_window_position"),
-                                self.config.save_window_position
-                            )
-                            .on_toggle(Message::ToggleSaveWindowPosition)],
+                            row![
+                                checkbox(self.config.save_window_position)
+                                    .label(fl!("save_window_position"))
+                                    .on_toggle(Message::ToggleSaveWindowPosition)
+                            ],
                             row![
                                 text(format!("{}: ", fl!("ytdlp_path"))),
                                 text_input(

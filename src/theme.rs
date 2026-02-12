@@ -1,6 +1,6 @@
 use iced::overlay::menu;
 use iced::widget::pick_list;
-use iced::{theme, Background, Border, Color, Theme};
+use iced::{theme, Background, Border, Color, Shadow, Theme};
 use iced_aw::tab_bar;
 
 use crate::YtGUI;
@@ -44,6 +44,11 @@ pub fn ytdlp_gui_theme(_state: &YtGUI) -> theme::Theme {
             primary: ACTIVE,
             success: HOVERED,
             danger: DANGER,
+            warning: Color::from_rgb(
+                0xb7 as f32 / 255.0,
+                0x7e as f32 / 255.0,
+                0x33 as f32 / 255.0,
+            ),
         },
     )
 }
@@ -86,7 +91,7 @@ pub fn pick_list_style(theme: &Theme, status: pick_list::Status) -> pick_list::S
 
     match status {
         pick_list::Status::Active => active,
-        pick_list::Status::Hovered | pick_list::Status::Opened => pick_list::Style {
+        pick_list::Status::Hovered | pick_list::Status::Opened { .. } => pick_list::Style {
             border: Border {
                 color: palette.primary.strong.color,
                 ..active.border
@@ -109,5 +114,6 @@ pub fn pick_list_menu_style(theme: &Theme) -> menu::Style {
         text_color: Color::WHITE,
         selected_text_color: palette.primary.strong.text,
         selected_background: palette.primary.strong.color.into(),
+        shadow: Shadow::default(),
     }
 }

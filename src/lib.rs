@@ -26,13 +26,13 @@ mod sponsorblock;
 pub mod theme;
 
 use sponsorblock::SponsorBlockOption;
-use tracing::metadata::LevelFilter;
 use tracing::Level;
+use tracing::metadata::LevelFilter;
 use tracing_appender::rolling;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 
 use crate::media_options::Options;
 use crate::media_options::{AudioFormat, AudioQuality, VideoFormat, VideoResolution};
@@ -64,7 +64,7 @@ pub enum Message {
     SelectCookiesFileTextInput(String),
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WindowPosition {
     pub x: f32,
     pub y: f32,
@@ -76,7 +76,7 @@ pub struct WindowSize {
     pub height: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Flags {
     pub url: Option<String>,
     pub config: Config,
@@ -99,7 +99,7 @@ where
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Config {
     #[serde(deserialize_with = "empty_string_as_none")]
@@ -151,7 +151,7 @@ pub struct YtGUI {
     playlist_progress: Option<String>,
     download_message: Option<Result<String, DownloadError>>,
     is_file_dialog_open: bool,
-    download_text_input_id: iced::widget::text_input::Id,
+    download_text_input_id: iced::widget::Id,
 
     sender: UnboundedSender<Message>,
     command: command::Command,
@@ -178,7 +178,7 @@ impl YtGUI {
             download_type: DownloadType::Video,
             playlist_progress: None,
             download_message: Default::default(),
-            download_text_input_id: iced::widget::text_input::Id::unique(),
+            download_text_input_id: iced::widget::Id::unique(),
 
             sender: progress_sender,
             command: command::Command::default(),

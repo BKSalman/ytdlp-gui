@@ -1,10 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use iced::{
-    window::{self, Position},
     Point,
+    window::{self, Position},
 };
-use ytdlp_gui::{git_hash, logging, theme::ytdlp_gui_theme, Config, Flags, YtGUI};
+use ytdlp_gui::{Config, Flags, YtGUI, git_hash, logging, theme::ytdlp_gui_theme};
 
 fn main() -> iced::Result {
     let mut args = std::env::args();
@@ -79,23 +79,31 @@ fn main() -> iced::Result {
 
     let flags = Flags { url, config };
 
-    iced::application("Youtube Downloader", YtGUI::update, YtGUI::view)
-        .window(window::Settings {
-            size: flags
-                .config
-                .window_size
-                .map(|s| iced::Size::new(s.width, s.height))
-                .unwrap_or(iced::Size::new(758., 471.)),
-            resizable: true,
-            exit_on_close_request: false,
-            position,
-            ..Default::default()
-        })
-        .subscription(YtGUI::subscription)
-        .font(iced_fonts::REQUIRED_FONT_BYTES)
-        .theme(ytdlp_gui_theme)
-        .run_with(|| {
+    let window_size = flags
+        .config
+        .window_size
+        .map(|s| iced::Size::new(s.width, s.height))
+        .unwrap_or(iced::Size::new(758., 471.));
+
+    iced::application(
+        move || {
+            let flags = flags.clone();
             let (sender, receiver) = iced::futures::channel::mpsc::unbounded();
             (YtGUI::new(flags, sender), iced::Task::stream(receiver))
-        })
+        },
+        YtGUI::update,
+        YtGUI::view,
+    )
+    .title("Youtube Downloader")
+    .window(window::Settings {
+        size: window_size,
+        resizable: true,
+        exit_on_close_request: false,
+        position,
+        ..Default::default()
+    })
+    .subscription(YtGUI::subscription)
+    .font(iced_fonts::REQUIRED_FONT_BYTES)
+    .theme(ytdlp_gui_theme)
+    .run()
 }

@@ -1,5 +1,5 @@
 use crate::DownloadError;
-use iced::widget::{button, column, horizontal_space, progress_bar, row, text};
+use iced::widget::{button, column, progress_bar, row, space, text};
 use iced::Length;
 
 use serde::{Deserialize, Serialize};
@@ -92,7 +92,7 @@ impl YtGUI {
             Ok(download_message) => column![
                 row![
                     text(download_message).align_x(iced::alignment::Horizontal::Center),
-                    horizontal_space(),
+                    space::horizontal(),
                     text(self.playlist_progress.as_deref().unwrap_or_default()),
                     button("X").on_press(Message::StopDownload).padding([5, 25]),
                 ]
@@ -115,7 +115,7 @@ impl YtGUI {
             Err(e) => {
                 column![row![
                     text(e.to_string()).align_x(iced::alignment::Horizontal::Center),
-                    horizontal_space(),
+                    space::horizontal(),
                     button("X").on_press(Message::StopDownload).padding([5, 25]),
                 ]
                 .spacing(SPACING)
