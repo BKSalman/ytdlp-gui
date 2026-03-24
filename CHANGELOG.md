@@ -1,6 +1,6 @@
 # Changelog
 
-## Unversioned
+## 3.2.0
 - Updated to `iced` v0.14
 - Dev: remove kdialog and zenity from nix build
 
