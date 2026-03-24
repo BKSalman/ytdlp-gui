@@ -31,22 +31,6 @@
           makeWrapper
         ];
 
-        libPath = with pkgs; lib.makeLibraryPath [
-                glib
-                gtk3
-                libGL
-                bzip2
-                fontconfig
-                freetype
-                xorg.libX11
-                xorg.libXcursor
-                xorg.libXrandr
-                xorg.libXi
-                libxkbcommon
-                vulkan-loader
-                wayland
-              ];
-
         buildInputs = with pkgs; [
           cairo
           gdk-pixbuf
@@ -60,19 +44,21 @@
           freetype
           freetype.dev
 
-          vulkan-headers
-          vulkan-loader
           libGL
+          vulkan-headers vulkan-loader
+          vulkan-tools vulkan-tools-lunarg
+          vulkan-extension-layer
+          vulkan-validation-layers
 
           libxkbcommon
           # WINIT_UNIX_BACKEND=wayland
           wayland
 
           # WINIT_UNIX_BACKEND=x11
-          xorg.libX11
-          xorg.libXcursor
-          xorg.libXi
-          xorg.libXrandr
+          libX11
+          libXcursor
+          libXi
+          libXrandr
           # bzip2
         ];
 
@@ -95,7 +81,7 @@
               done
               install -Dm644 "$src/data/applications/ytdlp-gui.desktop" -t "$out/share/applications/"
 
-              patchelf --set-rpath ${libPath} $out/bin/ytdlp-gui
+              patchelf --set-rpath ${pkgs.lib.makeLibraryPath buildInputs} $out/bin/ytdlp-gui
 
               wrapProgram $out/bin/ytdlp-gui \
                 --set LD_LIBRARY_PATH "${pkgs.libxkbcommon}/lib:${pkgs.libGL}/lib:${pkgs.wayland}/lib:{pkgs.vulkan-loader}/lib"
@@ -118,7 +104,7 @@
             yt-dlp
             cargo-i18n
           ];
-          LD_LIBRARY_PATH = "${libPath}";
+          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";
           XDG_DATA_DIRS="${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS";
         };
       }) // {
