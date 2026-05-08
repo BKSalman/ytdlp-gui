@@ -450,9 +450,7 @@ impl YtGUI {
         .into();
 
         #[cfg(feature = "explain")]
-        let content: crate::widgets::Element<Message> = content.into();
-        #[cfg(feature = "explain")]
-        let content: crate::widgets::Element<Message> = content.explain(Color::BLACK);
+        let content = content.explain(Color::from_rgb(0., 1.0, 0.));
 
         container(content)
             .height(Length::Fill)
