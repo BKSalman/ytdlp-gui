@@ -479,7 +479,9 @@ fn new_version(new_version: flags::NewVersion) -> anyhow::Result<()> {
         .run("git tag")
         .ok();
     git("push").run("git push")?;
-    git("push").with_arg("--tags").run("git push --tags")?;
+    git("push")
+        .with_args(["origin", &new_version.version])
+        .run(&format!("git push origin {}", new_version.version))?;
 
     println!("Packaging application for AUR");
     package_aur(new_version.rel)?;
