@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.3.0
+- Minor: Added checking for updates (no self update)
+
 ## 3.2.0
 - Updated to `iced` v0.14
 - Dev: remove kdialog and zenity from nix build
