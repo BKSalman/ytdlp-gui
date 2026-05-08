@@ -474,12 +474,15 @@ fn new_version(new_version: flags::NewVersion) -> anyhow::Result<()> {
         ])
         .run("git commit")
         .ok();
+    let tag = format!("v{}", new_version.version);
     git("tag")
-        .with_arg(&format!("v{}", new_version.version))
-        .run("git tag")
+        .with_arg(&tag)
+        .run(&format!("git tag {}", tag))
         .ok();
     git("push").run("git push")?;
-    git("push").with_arg("--tags").run("git push --tags")?;
+    git("push")
+        .with_args(["origin", &tag])
+        .run(&format!("git push origin {}", tag))?;
 
     println!("Packaging application for AUR");
     package_aur(new_version.rel)?;
