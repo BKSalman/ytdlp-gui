@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 
 use iced::widget::{
-    button, checkbox, column, container, pick_list, row, scrollable, text, text_input,
+    button, checkbox, column, container, pick_list, rich_text, row, scrollable, span, text,
+    text_input,
 };
-use iced::{Event, Length, Point, Subscription, window};
+use iced::{Color, Event, Length, Padding, Point, Subscription, window};
 use iced_aw::Tabs;
 use url::Url;
 
@@ -276,12 +277,160 @@ impl YtGUI {
 
                 self.config.cookies_file = Some(path);
             }
+            Message::UpdateCheck(res) => {
+                // TODO: logging
+                match res {
+                    Ok(maybe_version) => {
+                        self.new_version = maybe_version;
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to fetch update: {e:?}");
+                    }
+                }
+            }
+            Message::OpenLink(link) => {
+                println!("opening: {link}");
+                if let Err(e) = open::that(&link) {
+                    eprintln!("failed to open link {link}: {e}");
+                }
+            }
         }
 
         iced::Task::none()
     }
 
     pub fn view(&self) -> iced::Element<'_, Message> {
+        let tabs = Tabs::new(Message::SelectTab)
+            .push(
+                Tab::Video,
+                iced_aw::TabLabel::Text(fl!("video")),
+                column![
+                    row![if let Some(download_message) = &self.download_message {
+                        self.show_download_progress(download_message)
+                    } else {
+                        column![
+                            Options::video_resolutions(self.config.options.video_resolution),
+                            Options::video_formats(self.config.options.video_format),
+                        ]
+                        .width(Length::Fill)
+                    }],
+                    column![
+                        row![
+                            text_input(
+                                &fl!("download_path"),
+                                &self.config.download_folder.display().to_string()
+                            )
+                            .on_input(Message::DownloadFolderTextInput)
+                            .on_submit(Message::SelectDownloadFolderTextInput),
+                            button(text(fl!("browse"))).on_press(Message::SelectDownloadFolder),
+                        ]
+                        .spacing(SPACING)
+                        .align_y(iced::Alignment::Center),
+                        row![if !self.command.is_running() {
+                            button(text(fl!("download")))
+                                .on_press(Message::StartDownload(self.download_link.clone()))
+                        } else {
+                            button(text(fl!("download")))
+                        }]
+                    ]
+                    .width(Length::Fill)
+                    .align_x(iced::Alignment::Center)
+                    .spacing(20)
+                    .padding(Padding::ZERO.top(20).horizontal(20))
+                ]
+                .width(Length::Fill),
+            )
+            .push(
+                Tab::Audio,
+                iced_aw::TabLabel::Text(fl!("audio")),
+                column![
+                    row![if let Some(download_message) = &self.download_message {
+                        self.show_download_progress(download_message)
+                    } else {
+                        column![
+                            Options::audio_qualities(self.config.options.audio_quality),
+                            Options::audio_formats(self.config.options.audio_format),
+                        ]
+                    }],
+                    column![
+                        row![
+                            text_input(
+                                &fl!("download_path"),
+                                &self.config.download_folder.display().to_string()
+                            )
+                            .on_input(Message::DownloadFolderTextInput)
+                            .on_submit(Message::SelectDownloadFolderTextInput),
+                            button(text(fl!("browse"))).on_press(Message::SelectDownloadFolder),
+                        ]
+                        .spacing(SPACING)
+                        .align_y(iced::Alignment::Center),
+                        row![if !self.command.is_running() {
+                            button(text(fl!("download")))
+                                .on_press(Message::StartDownload(self.download_link.clone()))
+                        } else {
+                            button(text(fl!("download")))
+                        }]
+                    ]
+                    .width(Length::Fill)
+                    .align_x(iced::Alignment::Center)
+                    .spacing(20)
+                    .padding(Padding::ZERO.top(20).horizontal(20))
+                ],
+            )
+            .push(
+                Tab::Settings,
+                iced_aw::TabLabel::Text(fl!("settings")),
+                scrollable(
+                    column![
+                        row![
+                            checkbox(self.config.save_window_position)
+                                .label(fl!("save_window_position"))
+                                .on_toggle(Message::ToggleSaveWindowPosition)
+                        ],
+                        row![
+                            text(format!("{}: ", fl!("ytdlp_path"))),
+                            text_input(
+                                &fl!("ytdlp_path_leave_empty"),
+                                &self
+                                    .config
+                                    .bin_path
+                                    .clone()
+                                    .unwrap_or("".into())
+                                    .to_string_lossy()
+                            )
+                            .on_input(Message::SelectYtDlpBitPathTextInput),
+                            button(text(fl!("browse"))).on_press(Message::SelectYtDlpBinPath),
+                        ]
+                        .spacing(SPACING)
+                        .align_y(iced::Alignment::Center),
+                        row![
+                            text(fl!("cookies_file")),
+                            text_input(
+                                "",
+                                &self
+                                    .config
+                                    .cookies_file
+                                    .clone()
+                                    .unwrap_or("".into())
+                                    .to_string_lossy()
+                            )
+                            .on_input(Message::SelectCookiesFileTextInput),
+                            button(text(fl!("browse"))).on_press(Message::SelectCookiesFile),
+                        ]
+                        .spacing(SPACING)
+                        .align_y(iced::Alignment::Center),
+                    ]
+                    .width(Length::Fill)
+                    .spacing(20)
+                    .padding(Padding::ZERO.top(20).horizontal(20)),
+                ),
+            )
+            .set_active_tab(&self.active_tab)
+            .height(Length::Shrink)
+            .width(Length::FillPortion(1))
+            .tab_bar_width(Length::FillPortion(1))
+            .tab_bar_style(tab_bar_style);
+
         let content: iced::Element<Message> = column![
             row![
                 text_input(&fl!("download_link"), &self.download_link)
@@ -312,141 +461,25 @@ impl YtGUI {
             ]
             .spacing(7)
             .align_y(iced::Alignment::Center),
-            Tabs::new(Message::SelectTab)
-                .push(
-                    Tab::Video,
-                    iced_aw::TabLabel::Text(fl!("video")),
-                    column![
-                        row![if let Some(download_message) = &self.download_message {
-                            self.show_download_progress(download_message)
-                        } else {
-                            column![
-                                Options::video_resolutions(self.config.options.video_resolution),
-                                Options::video_formats(self.config.options.video_format),
-                            ]
-                            .width(Length::Fill)
-                        }],
-                        column![
-                            row![
-                                text_input(
-                                    &fl!("download_path"),
-                                    &self.config.download_folder.display().to_string()
-                                )
-                                .on_input(Message::DownloadFolderTextInput)
-                                .on_submit(Message::SelectDownloadFolderTextInput),
-                                button(text(fl!("browse"))).on_press(Message::SelectDownloadFolder),
-                            ]
-                            .spacing(SPACING)
-                            .align_y(iced::Alignment::Center),
-                            row![if !self.command.is_running() {
-                                button(text(fl!("download")))
-                                    .on_press(Message::StartDownload(self.download_link.clone()))
-                            } else {
-                                button(text(fl!("download")))
-                            }]
-                        ]
-                        .width(Length::Fill)
-                        .align_x(iced::Alignment::Center)
-                        .spacing(20)
-                        .padding(20)
+            tabs,
+            self.new_version.as_ref().map(|new_version| row![
+                column![
+                    rich_text![
+                        "New version available: ",
+                        span(new_version.to_string())
+                            .color(Color::from_rgb8(94, 169, 231))
+                            .underline(true)
+                            .link("https://github.com/BKSalman/ytdlp-gui/releases/latest"),
                     ]
-                    .width(Length::Fill),
-                )
-                .push(
-                    Tab::Audio,
-                    iced_aw::TabLabel::Text(fl!("audio")),
-                    column![
-                        row![if let Some(download_message) = &self.download_message {
-                            self.show_download_progress(download_message)
-                        } else {
-                            column![
-                                Options::audio_qualities(self.config.options.audio_quality),
-                                Options::audio_formats(self.config.options.audio_format),
-                            ]
-                        }],
-                        column![
-                            row![
-                                text_input(
-                                    &fl!("download_path"),
-                                    &self.config.download_folder.display().to_string()
-                                )
-                                .on_input(Message::DownloadFolderTextInput)
-                                .on_submit(Message::SelectDownloadFolderTextInput),
-                                button(text(fl!("browse"))).on_press(Message::SelectDownloadFolder),
-                            ]
-                            .spacing(SPACING)
-                            .align_y(iced::Alignment::Center),
-                            row![if !self.command.is_running() {
-                                button(text(fl!("download")))
-                                    .on_press(Message::StartDownload(self.download_link.clone()))
-                            } else {
-                                button(text(fl!("download")))
-                            }]
-                        ]
-                        .width(Length::Fill)
-                        .align_x(iced::Alignment::Center)
-                        .spacing(20)
-                        .padding(20)
-                    ],
-                )
-                .push(
-                    Tab::Settings,
-                    iced_aw::TabLabel::Text(fl!("settings")),
-                    scrollable(
-                        column![
-                            row![
-                                checkbox(self.config.save_window_position)
-                                    .label(fl!("save_window_position"))
-                                    .on_toggle(Message::ToggleSaveWindowPosition)
-                            ],
-                            row![
-                                text(format!("{}: ", fl!("ytdlp_path"))),
-                                text_input(
-                                    &fl!("ytdlp_path_leave_empty"),
-                                    &self
-                                        .config
-                                        .bin_path
-                                        .clone()
-                                        .unwrap_or("".into())
-                                        .to_string_lossy()
-                                )
-                                .on_input(Message::SelectYtDlpBitPathTextInput),
-                                button(text(fl!("browse"))).on_press(Message::SelectYtDlpBinPath),
-                            ]
-                            .spacing(SPACING)
-                            .align_y(iced::Alignment::Center),
-                            row![
-                                text(fl!("cookies_file")),
-                                text_input(
-                                    "",
-                                    &self
-                                        .config
-                                        .cookies_file
-                                        .clone()
-                                        .unwrap_or("".into())
-                                        .to_string_lossy()
-                                )
-                                .on_input(Message::SelectCookiesFileTextInput),
-                                button(text(fl!("browse"))).on_press(Message::SelectCookiesFile),
-                            ]
-                            .spacing(SPACING)
-                            .align_y(iced::Alignment::Center),
-                        ]
-                        .width(Length::Fill)
-                        .spacing(20)
-                        .padding(20)
-                    )
-                )
-                .set_active_tab(&self.active_tab)
-                .height(Length::Shrink)
-                .width(Length::FillPortion(1))
-                .tab_bar_width(Length::FillPortion(1))
-                .tab_bar_style(tab_bar_style),
+                    .on_link_click(Message::OpenLink)
+                ]
+                .align_x(iced::Alignment::End),
+            ])
         ]
         .width(Length::Fill)
         .align_x(iced::Alignment::Center)
         .spacing(20)
-        .padding(20)
+        .padding(Padding::ZERO.top(20).horizontal(20))
         .into();
 
         #[cfg(feature = "explain")]

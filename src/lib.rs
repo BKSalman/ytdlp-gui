@@ -24,6 +24,7 @@ pub mod media_options;
 pub mod progress;
 mod sponsorblock;
 pub mod theme;
+pub mod update;
 
 use sponsorblock::SponsorBlockOption;
 use tracing::Level;
@@ -62,6 +63,8 @@ pub enum Message {
     SelectCookiesFile,
     SelectedCookiesFile(Option<PathBuf>),
     SelectCookiesFileTextInput(String),
+    UpdateCheck(Result<Option<update::Version>, update::Error>),
+    OpenLink(String),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -159,6 +162,7 @@ pub struct YtGUI {
     window_height: f32,
     window_width: f32,
     window_pos: Point,
+    new_version: Option<update::Version>,
 }
 
 impl YtGUI {
@@ -187,12 +191,13 @@ impl YtGUI {
             window_width: 0.,
             is_file_dialog_open: false,
             window_pos: Point::default(),
+            new_version: None,
         }
     }
 
     fn log_download(&self) {
         let downloads_log_path = dirs::cache_dir()
-            .expect("config directory")
+            .expect("cache directory")
             .join("ytdlp-gui/downloads.log");
 
         let mut file = OpenOptions::new()

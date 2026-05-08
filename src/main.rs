@@ -4,7 +4,9 @@ use iced::{
     Point,
     window::{self, Position},
 };
-use ytdlp_gui::{Config, Flags, YtGUI, git_hash, logging, theme::ytdlp_gui_theme};
+use ytdlp_gui::{
+    Config, Flags, YtGUI, git_hash, logging, theme::ytdlp_gui_theme, update::check_for_update,
+};
 
 fn main() -> iced::Result {
     let mut args = std::env::args();
@@ -83,13 +85,19 @@ fn main() -> iced::Result {
         .config
         .window_size
         .map(|s| iced::Size::new(s.width, s.height))
-        .unwrap_or(iced::Size::new(758., 471.));
+        .unwrap_or(iced::Size::new(758., 425.));
 
     iced::application(
         move || {
             let flags = flags.clone();
             let (sender, receiver) = iced::futures::channel::mpsc::unbounded();
-            (YtGUI::new(flags, sender), iced::Task::stream(receiver))
+            (
+                YtGUI::new(flags, sender),
+                iced::Task::batch([
+                    iced::Task::stream(receiver),
+                    iced::Task::perform(check_for_update(), ytdlp_gui::Message::UpdateCheck),
+                ]),
+            )
         },
         YtGUI::update,
         YtGUI::view,
