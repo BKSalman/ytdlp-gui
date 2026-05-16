@@ -46,6 +46,9 @@ impl YtGUI {
             Message::TogglePlaylist(is_playlist) => {
                 self.is_playlist = is_playlist;
             }
+            Message::ToggleThumbnail(get_thumbnail) =>{
+                self.get_thumbnail = get_thumbnail;
+            }
             Message::SelectedSponsorBlockOption(sponsorblock) => {
                 self.sponsorblock = Some(sponsorblock);
             }
@@ -183,6 +186,11 @@ impl YtGUI {
 
                         args.push(self.config.options.video_format.options());
 
+                        if self.get_thumbnail
+                        {
+                            args.push("--embed-thumbnail")
+                        }
+
                         tracing::debug!("{args:#?}");
                     }
                     DownloadType::Audio => {
@@ -196,6 +204,12 @@ impl YtGUI {
 
                         args.push("--audio-quality");
                         args.push(self.config.options.audio_quality.options());
+
+                        if self.get_thumbnail
+                        {
+                            args.push("--embed-thumbnail")
+                        }
+
                     }
                 }
 
@@ -457,7 +471,10 @@ impl YtGUI {
                 .align_y(iced::Alignment::Center),
                 checkbox(self.is_playlist)
                     .label("Playlist")
-                    .on_toggle(Message::TogglePlaylist),
+                    .on_toggle(Message::TogglePlaylist).spacing(5),
+                checkbox(self.get_thumbnail)
+                    .label("Thumbnail")
+                    .on_toggle(Message::ToggleThumbnail),
             ]
             .spacing(7)
             .align_y(iced::Alignment::Center),

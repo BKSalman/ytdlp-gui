@@ -42,6 +42,7 @@ use crate::media_options::{AudioFormat, AudioQuality, VideoFormat, VideoResoluti
 pub enum Message {
     InputChanged(String),
     TogglePlaylist(bool),
+    ToggleThumbnail(bool),
     SelectedSponsorBlockOption(SponsorBlockOption),
     SelectedVideoFormat(VideoFormat),
     SelectedResolution(VideoResolution),
@@ -146,6 +147,7 @@ impl Config {
 pub struct YtGUI {
     download_link: String,
     is_playlist: bool,
+    get_thumbnail: bool,
     sponsorblock: Option<SponsorBlockOption>,
     config: Config,
 
@@ -175,6 +177,7 @@ impl YtGUI {
         Self {
             download_link: flags.url.clone().unwrap_or_default(),
             is_playlist: Default::default(),
+            get_thumbnail: Default::default(),
             sponsorblock: Default::default(),
             config: flags.config,
 
