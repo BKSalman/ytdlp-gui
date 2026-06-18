@@ -1,12 +1,9 @@
 use iced::overlay::menu;
-use iced::widget::pick_list;
-use iced::{theme, Background, Border, Color, Shadow, Theme};
+use iced::widget::{self, pick_list};
+use iced::{Background, Border, Color, Element, Shadow, Theme, theme};
 use iced_aw::tab_bar;
 
-use crate::YtGUI;
-
-// #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-// pub struct Theme;
+use crate::{Message, YtGUI};
 
 const BACKGROUND: Color =
     Color::from_rgb(0x36 as f32 / 255., 0x39 as f32 / 255., 0x3F as f32 / 255.);
@@ -54,21 +51,13 @@ pub fn ytdlp_gui_theme(_state: &YtGUI) -> theme::Theme {
 }
 
 pub fn tab_bar_style(theme: &Theme, status: tab_bar::Status) -> tab_bar::Style {
-    let mut base = tab_bar::Style::default();
-    let palette = theme.extended_palette();
-
-    base.text_color = palette.background.base.text;
+    let mut base = tab_bar::tab_bar::primary(theme, status);
 
     match status {
         tab_bar::Status::Disabled => {
             base.tab_label_background = Background::Color(SURFACE);
         }
-        tab_bar::Status::Hovered => {
-            base.tab_label_background = Background::Color(palette.primary.strong.color);
-        }
-        _ => {
-            base.tab_label_background = Background::Color(palette.primary.base.color);
-        }
+        _ => {}
     }
 
     base
@@ -116,4 +105,13 @@ pub fn pick_list_menu_style(theme: &Theme) -> menu::Style {
         selected_background: palette.primary.strong.color.into(),
         shadow: Shadow::default(),
     }
+}
+
+pub fn button<'a>(content: impl Into<Element<'a, Message>>) -> widget::Button<'a, Message> {
+    widget::button(content).style(|theme: &Theme, status| {
+        let mut style = widget::button::primary(theme, status);
+        style.text_color = theme.extended_palette().background.base.text;
+
+        style
+    })
 }

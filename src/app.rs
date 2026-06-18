@@ -1,19 +1,17 @@
 use std::path::PathBuf;
 
 use iced::widget::{
-    button, checkbox, column, container, pick_list, rich_text, row, scrollable, span, text,
-    text_input,
+    checkbox, column, container, pick_list, rich_text, row, scrollable, span, text, text_input,
 };
 use iced::{Color, Event, Length, Padding, Point, Subscription, window};
 use iced_aw::Tabs;
 use url::Url;
 
 use crate::error::DownloadError;
+use crate::fl;
 use crate::media_options::{Options, playlist_options};
 use crate::sponsorblock::SponsorBlockOption;
-use crate::theme::{pick_list_menu_style, pick_list_style, tab_bar_style};
-// use crate::widgets::Tabs;
-use crate::fl;
+use crate::theme::{button, pick_list_menu_style, pick_list_style, tab_bar_style};
 use crate::{Message, WindowPosition, YtGUI, choose_file, choose_folder};
 use notify_rust::Notification;
 
