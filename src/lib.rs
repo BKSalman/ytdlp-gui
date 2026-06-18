@@ -17,6 +17,7 @@ use serde::de::IntoDeserializer;
 use serde::{Deserialize, Serialize};
 
 mod app;
+mod collapsible;
 pub mod command;
 mod error;
 pub mod i18n;
@@ -66,6 +67,7 @@ pub enum Message {
     SelectCookiesFileTextInput(String),
     UpdateCheck(Result<Option<update::Version>, update::Error>),
     OpenLink(String),
+    ToggleAdvancedOptions,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -148,7 +150,7 @@ pub struct YtGUI {
     download_link: String,
     is_playlist: bool,
     get_thumbnail: bool,
-    sponsorblock: Option<SponsorBlockOption>,
+    sponsorblock: SponsorBlockOption,
     config: Config,
 
     active_tab: Tab,
@@ -165,6 +167,7 @@ pub struct YtGUI {
     window_width: f32,
     window_pos: Point,
     new_version: Option<update::Version>,
+    pub(crate) show_advanced_options: bool,
 }
 
 impl YtGUI {
@@ -195,6 +198,7 @@ impl YtGUI {
             is_file_dialog_open: false,
             window_pos: Point::default(),
             new_version: None,
+            show_advanced_options: false,
         }
     }
 

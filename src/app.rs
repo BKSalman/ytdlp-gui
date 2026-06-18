@@ -3,10 +3,11 @@ use std::path::PathBuf;
 use iced::widget::{
     checkbox, column, container, pick_list, rich_text, row, scrollable, span, text, text_input,
 };
-use iced::{Color, Event, Length, Padding, Point, Subscription, window};
+use iced::{Alignment, Color, Event, Length, Padding, Point, Subscription, window};
 use iced_aw::Tabs;
 use url::Url;
 
+use crate::collapsible::collapsible;
 use crate::error::DownloadError;
 use crate::fl;
 use crate::media_options::{Options, playlist_options};
@@ -44,11 +45,11 @@ impl YtGUI {
             Message::TogglePlaylist(is_playlist) => {
                 self.is_playlist = is_playlist;
             }
-            Message::ToggleThumbnail(get_thumbnail) =>{
+            Message::ToggleThumbnail(get_thumbnail) => {
                 self.get_thumbnail = get_thumbnail;
             }
             Message::SelectedSponsorBlockOption(sponsorblock) => {
-                self.sponsorblock = Some(sponsorblock);
+                self.sponsorblock = sponsorblock;
             }
             Message::SelectedVideoFormat(format) => {
                 self.config.options.video_format = format;
@@ -184,8 +185,7 @@ impl YtGUI {
 
                         args.push(self.config.options.video_format.options());
 
-                        if self.get_thumbnail
-                        {
+                        if self.get_thumbnail {
                             args.push("--embed-thumbnail")
                         }
 
@@ -203,11 +203,9 @@ impl YtGUI {
                         args.push("--audio-quality");
                         args.push(self.config.options.audio_quality.options());
 
-                        if self.get_thumbnail
-                        {
+                        if self.get_thumbnail {
                             args.push("--embed-thumbnail")
                         }
-
                     }
                 }
 
@@ -221,14 +219,13 @@ impl YtGUI {
 
                 args.append(&mut playlist_options.iter().map(|s| &**s).collect());
 
-                if let Some(sponsorblock) = &self.sponsorblock {
-                    match sponsorblock {
-                        SponsorBlockOption::Remove => {
-                            args.push("--sponsorblock-remove=default");
-                        }
-                        SponsorBlockOption::Mark => {
-                            args.push("--sponsorblock-mark=default");
-                        }
+                match self.sponsorblock {
+                    SponsorBlockOption::Disabled => {}
+                    SponsorBlockOption::Remove => {
+                        args.push("--sponsorblock-remove=default");
+                    }
+                    SponsorBlockOption::Mark => {
+                        args.push("--sponsorblock-mark=default");
                     }
                 }
 
@@ -306,12 +303,46 @@ impl YtGUI {
                     eprintln!("failed to open link {link}: {e}");
                 }
             }
+            Message::ToggleAdvancedOptions => {
+                self.show_advanced_options = !self.show_advanced_options;
+            }
         }
 
         iced::Task::none()
     }
 
     pub fn view(&self) -> iced::Element<'_, Message> {
+        let advanced_options = || {
+            collapsible(
+                fl!("advanced-options"),
+                self.show_advanced_options,
+                Message::ToggleAdvancedOptions,
+                column![
+                    row![
+                        text("SponsorBlock:"),
+                        pick_list(
+                            vec![
+                                SponsorBlockOption::Disabled,
+                                SponsorBlockOption::Remove,
+                                SponsorBlockOption::Mark,
+                            ],
+                            Some(self.sponsorblock),
+                            Message::SelectedSponsorBlockOption
+                        )
+                        .style(pick_list_style)
+                        .menu_style(pick_list_menu_style)
+                    ]
+                    .spacing(SPACING)
+                    .align_y(Alignment::Center),
+                    checkbox(self.get_thumbnail)
+                        .label(fl!("embed-thumbnail"))
+                        .on_toggle(Message::ToggleThumbnail),
+                ]
+                .padding(12)
+                .spacing(SPACING),
+            )
+        };
+
         let tabs = Tabs::new(Message::SelectTab)
             .push(
                 Tab::Video,
@@ -321,8 +352,13 @@ impl YtGUI {
                         self.show_download_progress(download_message)
                     } else {
                         column![
-                            Options::video_resolutions(self.config.options.video_resolution),
-                            Options::video_formats(self.config.options.video_format),
+                            row![
+                                Options::video_resolutions(self.config.options.video_resolution),
+                                iced::widget::space().width(Length::Fill),
+                                Options::video_formats(self.config.options.video_format)
+                            ]
+                            .padding(12),
+                            advanced_options(),
                         ]
                         .width(Length::Fill)
                     }],
@@ -360,8 +396,13 @@ impl YtGUI {
                         self.show_download_progress(download_message)
                     } else {
                         column![
-                            Options::audio_qualities(self.config.options.audio_quality),
-                            Options::audio_formats(self.config.options.audio_format),
+                            row![
+                                Options::audio_qualities(self.config.options.audio_quality),
+                                iced::widget::space().width(Length::Fill),
+                                Options::audio_formats(self.config.options.audio_format),
+                            ]
+                            .padding(12),
+                            advanced_options(),
                         ]
                     }],
                     column![
@@ -451,28 +492,9 @@ impl YtGUI {
                     .size(FONT_SIZE)
                     .width(Length::Fill)
                     .id(self.download_text_input_id.clone()),
-            ]
-            .spacing(7)
-            .align_y(iced::Alignment::Center),
-            row![
-                row![
-                    text("SponsorBlock:"),
-                    pick_list(
-                        vec![SponsorBlockOption::Remove, SponsorBlockOption::Mark,],
-                        self.sponsorblock,
-                        Message::SelectedSponsorBlockOption
-                    )
-                    .style(pick_list_style)
-                    .menu_style(pick_list_menu_style)
-                ]
-                .spacing(4)
-                .align_y(iced::Alignment::Center),
                 checkbox(self.is_playlist)
                     .label("Playlist")
-                    .on_toggle(Message::TogglePlaylist).spacing(5),
-                checkbox(self.get_thumbnail)
-                    .label("Thumbnail")
-                    .on_toggle(Message::ToggleThumbnail),
+                    .on_toggle(Message::TogglePlaylist),
             ]
             .spacing(7)
             .align_y(iced::Alignment::Center),

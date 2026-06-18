@@ -38,12 +38,16 @@ shellexpand = { version = "3.1.1", default-features = false, features = ["base-0
 notify-rust = "4.11.7"
 reqwest = { version = "0.13.3", features = ["json"] }
 open = "5.3.4"
+iced_core = "0.14.0"
 
 [dependencies.i18n-embed]
 version = "0.15"
 features = ["fluent-system", "desktop-requester"]
 
 [features]
+hot-reload = [
+  "iced/hot"
+]
 explain = []
 
 [package.metadata.generate-rpm]

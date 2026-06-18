@@ -4,10 +4,10 @@ use iced::widget::{pick_list, row, text};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    Message,
     app::{FONT_SIZE, SPACING},
     fl,
     theme::{pick_list_menu_style, pick_list_style},
-    Message,
 };
 
 #[derive(Deserialize, Serialize, Debug, Default, Copy, Clone)]
@@ -166,9 +166,8 @@ impl Options {
             .style(pick_list_style),
         ]
         .spacing(SPACING)
-        .width(iced::Length::Fill)
+        .width(iced::Length::Shrink)
         .align_y(iced::Alignment::Center)
-        .padding(12)
     }
 
     pub fn video_formats(format: VideoFormat) -> iced::widget::Row<'static, Message> {
@@ -183,10 +182,9 @@ impl Options {
             .menu_style(pick_list_menu_style)
             .style(pick_list_style),
         ]
-        .width(iced::Length::Fill)
+        .width(iced::Length::Shrink)
         .spacing(SPACING)
         .align_y(iced::Alignment::Center)
-        .padding(12)
     }
 
     pub fn audio_formats(format: AudioFormat) -> iced::widget::Row<'static, Message> {
@@ -207,10 +205,9 @@ impl Options {
             .style(pick_list_style)
             .menu_style(pick_list_menu_style)
         ]
-        .width(iced::Length::Fill)
+        .width(iced::Length::Shrink)
         .spacing(SPACING)
         .align_y(iced::Alignment::Center)
-        .padding(12)
     }
 
     pub fn audio_qualities(quality: AudioQuality) -> iced::widget::Row<'static, Message> {
@@ -230,10 +227,9 @@ impl Options {
             .style(pick_list_style)
             .menu_style(pick_list_menu_style)
         ]
-        .width(iced::Length::Fill)
+        .width(iced::Length::Shrink)
         .spacing(SPACING)
         .align_y(iced::Alignment::Center)
-        .padding(12)
     }
 }
 

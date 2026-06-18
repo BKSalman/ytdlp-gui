@@ -1,7 +1,9 @@
 use crate::fl;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum SponsorBlockOption {
+    #[default]
+    Disabled,
     Remove,
     Mark,
 }
@@ -11,6 +13,7 @@ impl core::fmt::Display for SponsorBlockOption {
         match self {
             SponsorBlockOption::Remove => f.write_str(&fl!("sponsorblock_remove")),
             SponsorBlockOption::Mark => f.write_str(&fl!("sponsorblock_mark")),
+            SponsorBlockOption::Disabled => f.write_str(&fl!("sponsorblock_disabled")),
         }
     }
 }
