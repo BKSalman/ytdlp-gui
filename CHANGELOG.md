@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.4.1
+- Patch: Add FLAC format
+
 ## 3.4.0
 - Minor: Add advanced options section (this will allow adding more features without ruining the simple use case experience)
 - Minor: Better UI layout for Arabic (still a bit janky)
