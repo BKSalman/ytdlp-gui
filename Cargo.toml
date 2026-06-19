@@ -19,7 +19,7 @@ members = [
 [dependencies]
 chrono = { version = "0.4.41", default-features = false, features = ["clock"] }
 dirs = "6.0.0"
-iced = { version = "0.14.0", features = ["tokio"] }
+iced = { version = "0.14.0", features = ["tokio", "advanced-shaping"] }
 iced_aw = { version = "0.13", features = ["tabs"], default-features = false }
 iced_fonts = "0.1.1"
 rfd = "0.15"
@@ -39,6 +39,7 @@ notify-rust = "4.11.7"
 reqwest = { version = "0.13.3", features = ["json"] }
 open = "5.3.4"
 iced_core = "0.14.0"
+iced_widget = "0.14.2"
 
 [dependencies.i18n-embed]
 version = "0.15"

@@ -17,6 +17,7 @@ use serde::de::IntoDeserializer;
 use serde::{Deserialize, Serialize};
 
 mod app;
+mod checkbox;
 mod collapsible;
 pub mod command;
 mod error;
@@ -167,7 +168,7 @@ pub struct YtGUI {
     window_width: f32,
     window_pos: Point,
     new_version: Option<update::Version>,
-    pub(crate) show_advanced_options: bool,
+    show_advanced_options: bool,
 }
 
 impl YtGUI {

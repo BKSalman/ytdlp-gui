@@ -3,11 +3,14 @@
 use std::sync::LazyLock;
 
 use i18n_embed::{
-    fluent::{fluent_language_loader, FluentLanguageLoader},
-    unic_langid::LanguageIdentifier,
     DefaultLocalizer, LanguageLoader, Localizer,
+    fluent::{FluentLanguageLoader, fluent_language_loader},
+    unic_langid::LanguageIdentifier,
 };
+use iced::{Element, widget::Row};
 use rust_embed::RustEmbed;
+
+use crate::Message;
 
 /// Applies the requested language(s) to requested translations from the `fl!()` macro.
 pub fn init(requested_languages: &[LanguageIdentifier]) {
@@ -46,4 +49,22 @@ macro_rules! fl {
     ($message_id:literal, $($args:expr),*) => {{
         i18n_embed_fl::fl!($crate::i18n::LANGUAGE_LOADER, $message_id, $($args), *)
     }};
+}
+
+pub fn is_rtl() -> bool {
+    matches!(
+        localizer()
+            .language_loader()
+            .current_language()
+            .language
+            .as_str(),
+        "ar"
+    )
+}
+
+pub fn dir_row<'a>(mut children: Vec<Element<'a, Message>>) -> Row<'a, Message> {
+    if is_rtl() {
+        children.reverse();
+    }
+    Row::with_children(children)
 }

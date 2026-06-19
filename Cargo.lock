@@ -6293,6 +6293,7 @@ dependencies = [
  "iced_aw",
  "iced_core 0.14.0",
  "iced_fonts 0.1.1",
+ "iced_widget",
  "notify-rust",
  "open",
  "reqwest",

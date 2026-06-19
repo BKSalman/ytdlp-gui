@@ -1,10 +1,10 @@
 use crate::DownloadError;
-use iced::widget::{button, column, progress_bar, row, space, text};
 use iced::Length;
+use iced::widget::{button, column, progress_bar, row, space, text};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{app::SPACING, Message, YtGUI};
+use crate::{Message, YtGUI, app::SPACING};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(tag = "type")]
@@ -113,15 +113,17 @@ impl YtGUI {
             .width(Length::Fill)
             .align_x(iced::Alignment::Center),
             Err(e) => {
-                column![row![
-                    text(e.to_string()).align_x(iced::alignment::Horizontal::Center),
-                    space::horizontal(),
-                    button("X").on_press(Message::StopDownload).padding([5, 25]),
+                column![
+                    row![
+                        text(e.to_string()).align_x(iced::alignment::Horizontal::Center),
+                        space::horizontal(),
+                        button("X").on_press(Message::StopDownload).padding([5, 25]),
+                    ]
+                    .spacing(SPACING)
+                    .width(iced::Length::Fill)
+                    .align_y(iced::Alignment::Center)
+                    .padding(12),
                 ]
-                .spacing(SPACING)
-                .width(iced::Length::Fill)
-                .align_y(iced::Alignment::Center)
-                .padding(12),]
             }
         }
     }
@@ -172,11 +174,11 @@ impl YtGUI {
                             };
 
                             self.download_message = Some(Ok(format!(
-                                                        "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins:02}:{eta_secs:02}",
-                                                        speed = speed.unwrap_or(0.) / 1024_f32.powi(2),
-                                                        eta_mins = eta.num_minutes(),
-                                                        eta_secs = eta.num_seconds() - (eta.num_minutes() * 60),
-                                                    )));
+                                "{total_downloaded} | {speed:.2}MB/s | ETA {eta_mins:02}:{eta_secs:02}",
+                                speed = speed.unwrap_or(0.) / 1024_f32.powi(2),
+                                eta_mins = eta.num_minutes(),
+                                eta_secs = eta.num_seconds() - (eta.num_minutes() * 60),
+                            )));
                         }
                         Progress::PostProcessing { status: _ } => {
                             self.download_message = Some(Ok(String::from("Processing...")));

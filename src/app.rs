@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use iced::widget::{
-    checkbox, column, container, pick_list, rich_text, row, scrollable, span, text, text_input,
+    column, container, pick_list, rich_text, row, scrollable, space, span, text, text_input,
 };
 use iced::{Alignment, Color, Event, Length, Padding, Point, Subscription, window};
 use iced_aw::Tabs;
@@ -9,11 +9,12 @@ use url::Url;
 
 use crate::collapsible::collapsible;
 use crate::error::DownloadError;
-use crate::fl;
+use crate::i18n::{dir_row, is_rtl};
 use crate::media_options::{Options, playlist_options};
 use crate::sponsorblock::SponsorBlockOption;
 use crate::theme::{button, pick_list_menu_style, pick_list_style, tab_bar_style};
 use crate::{Message, WindowPosition, YtGUI, choose_file, choose_folder};
+use crate::{checkbox::checkbox, fl};
 use notify_rust::Notification;
 
 pub const FONT_SIZE: f32 = 18.;
@@ -313,189 +314,219 @@ impl YtGUI {
 
     pub fn view(&self) -> iced::Element<'_, Message> {
         let advanced_options = || {
+            let mut options = column![
+                dir_row(vec![
+                    text(format!("{}:", fl!("sponsorblock"))).into(),
+                    pick_list(
+                        vec![
+                            SponsorBlockOption::Disabled,
+                            SponsorBlockOption::Remove,
+                            SponsorBlockOption::Mark,
+                        ],
+                        Some(self.sponsorblock),
+                        Message::SelectedSponsorBlockOption
+                    )
+                    .style(pick_list_style)
+                    .menu_style(pick_list_menu_style)
+                    .into()
+                ])
+                .spacing(SPACING)
+                .align_y(Alignment::Center),
+                checkbox(self.get_thumbnail)
+                    .label(fl!("embed-thumbnail"))
+                    .on_toggle(Message::ToggleThumbnail),
+            ];
+
+            if is_rtl() {
+                options = options.align_x(Alignment::End);
+            }
+
             collapsible(
                 fl!("advanced-options"),
                 self.show_advanced_options,
                 Message::ToggleAdvancedOptions,
-                column![
-                    row![
-                        text("SponsorBlock:"),
-                        pick_list(
-                            vec![
-                                SponsorBlockOption::Disabled,
-                                SponsorBlockOption::Remove,
-                                SponsorBlockOption::Mark,
-                            ],
-                            Some(self.sponsorblock),
-                            Message::SelectedSponsorBlockOption
-                        )
-                        .style(pick_list_style)
-                        .menu_style(pick_list_menu_style)
-                    ]
-                    .spacing(SPACING)
-                    .align_y(Alignment::Center),
-                    checkbox(self.get_thumbnail)
-                        .label(fl!("embed-thumbnail"))
-                        .on_toggle(Message::ToggleThumbnail),
-                ]
-                .padding(12)
-                .spacing(SPACING),
+                options.padding(12).spacing(SPACING),
             )
         };
 
-        let tabs = Tabs::new(Message::SelectTab)
-            .push(
-                Tab::Video,
-                iced_aw::TabLabel::Text(fl!("video")),
+        let download_path = || {
+            let mut download_path_input = text_input(
+                &fl!("download_path"),
+                &self.config.download_folder.display().to_string(),
+            )
+            .on_input(Message::DownloadFolderTextInput)
+            .on_submit(Message::SelectDownloadFolderTextInput);
+
+            if is_rtl() {
+                download_path_input = download_path_input.align_x(Alignment::End);
+            }
+
+            dir_row(vec![
+                download_path_input.into(),
+                button(text(fl!("browse")))
+                    .on_press(Message::SelectDownloadFolder)
+                    .into(),
+            ])
+            .spacing(SPACING)
+            .align_y(iced::Alignment::Center)
+        };
+
+        let video_tab = column![
+            row![if let Some(download_message) = &self.download_message {
+                self.show_download_progress(download_message)
+            } else {
                 column![
-                    row![if let Some(download_message) = &self.download_message {
-                        self.show_download_progress(download_message)
-                    } else {
-                        column![
-                            row![
-                                Options::video_resolutions(self.config.options.video_resolution),
-                                iced::widget::space().width(Length::Fill),
-                                Options::video_formats(self.config.options.video_format)
-                            ]
-                            .padding(12),
-                            advanced_options(),
-                        ]
-                        .width(Length::Fill)
-                    }],
-                    column![
-                        row![
-                            text_input(
-                                &fl!("download_path"),
-                                &self.config.download_folder.display().to_string()
-                            )
-                            .on_input(Message::DownloadFolderTextInput)
-                            .on_submit(Message::SelectDownloadFolderTextInput),
-                            button(text(fl!("browse"))).on_press(Message::SelectDownloadFolder),
-                        ]
-                        .spacing(SPACING)
-                        .align_y(iced::Alignment::Center),
-                        row![if !self.command.is_running() {
-                            button(text(fl!("download")))
-                                .on_press(Message::StartDownload(self.download_link.clone()))
-                        } else {
-                            button(text(fl!("download")))
-                        }]
-                    ]
-                    .width(Length::Fill)
-                    .align_x(iced::Alignment::Center)
-                    .spacing(20)
-                    .padding(Padding::ZERO.top(20).horizontal(20))
+                    dir_row(vec![
+                        Options::video_resolutions(self.config.options.video_resolution).into(),
+                        space::horizontal().into(),
+                        Options::video_formats(self.config.options.video_format).into()
+                    ])
+                    .padding(12),
+                    advanced_options(),
                 ]
-                .width(Length::Fill),
-            )
-            .push(
-                Tab::Audio,
-                iced_aw::TabLabel::Text(fl!("audio")),
+                .width(Length::Fill)
+            }],
+            column![
+                download_path(),
+                row![if !self.command.is_running() {
+                    button(text(fl!("download")))
+                        .on_press(Message::StartDownload(self.download_link.clone()))
+                } else {
+                    button(text(fl!("download")))
+                }]
+            ]
+            .width(Length::Fill)
+            .align_x(iced::Alignment::Center)
+            .spacing(20)
+            .padding(Padding::ZERO.top(20).horizontal(20))
+        ];
+
+        let audio_tab = column![
+            row![if let Some(download_message) = &self.download_message {
+                self.show_download_progress(download_message)
+            } else {
                 column![
-                    row![if let Some(download_message) = &self.download_message {
-                        self.show_download_progress(download_message)
-                    } else {
-                        column![
-                            row![
-                                Options::audio_qualities(self.config.options.audio_quality),
-                                iced::widget::space().width(Length::Fill),
-                                Options::audio_formats(self.config.options.audio_format),
-                            ]
-                            .padding(12),
-                            advanced_options(),
-                        ]
-                    }],
-                    column![
-                        row![
-                            text_input(
-                                &fl!("download_path"),
-                                &self.config.download_folder.display().to_string()
-                            )
-                            .on_input(Message::DownloadFolderTextInput)
-                            .on_submit(Message::SelectDownloadFolderTextInput),
-                            button(text(fl!("browse"))).on_press(Message::SelectDownloadFolder),
-                        ]
-                        .spacing(SPACING)
-                        .align_y(iced::Alignment::Center),
-                        row![if !self.command.is_running() {
-                            button(text(fl!("download")))
-                                .on_press(Message::StartDownload(self.download_link.clone()))
-                        } else {
-                            button(text(fl!("download")))
-                        }]
-                    ]
-                    .width(Length::Fill)
-                    .align_x(iced::Alignment::Center)
-                    .spacing(20)
-                    .padding(Padding::ZERO.top(20).horizontal(20))
-                ],
-            )
-            .push(
-                Tab::Settings,
-                iced_aw::TabLabel::Text(fl!("settings")),
-                scrollable(
-                    column![
-                        row![
-                            checkbox(self.config.save_window_position)
-                                .label(fl!("save_window_position"))
-                                .on_toggle(Message::ToggleSaveWindowPosition)
-                        ],
-                        row![
-                            text(format!("{}: ", fl!("ytdlp_path"))),
-                            text_input(
-                                &fl!("ytdlp_path_leave_empty"),
-                                &self
-                                    .config
-                                    .bin_path
-                                    .clone()
-                                    .unwrap_or("".into())
-                                    .to_string_lossy()
-                            )
-                            .on_input(Message::SelectYtDlpBitPathTextInput),
-                            button(text(fl!("browse"))).on_press(Message::SelectYtDlpBinPath),
-                        ]
-                        .spacing(SPACING)
-                        .align_y(iced::Alignment::Center),
-                        row![
-                            text(fl!("cookies_file")),
-                            text_input(
-                                "",
-                                &self
-                                    .config
-                                    .cookies_file
-                                    .clone()
-                                    .unwrap_or("".into())
-                                    .to_string_lossy()
-                            )
-                            .on_input(Message::SelectCookiesFileTextInput),
-                            button(text(fl!("browse"))).on_press(Message::SelectCookiesFile),
-                        ]
-                        .spacing(SPACING)
-                        .align_y(iced::Alignment::Center),
-                    ]
-                    .width(Length::Fill)
-                    .spacing(20)
-                    .padding(Padding::ZERO.top(20).horizontal(20)),
-                ),
-            )
-            .set_active_tab(&self.active_tab)
-            .height(Length::Shrink)
-            .width(Length::FillPortion(1))
-            .tab_bar_width(Length::FillPortion(1))
-            .tab_bar_style(tab_bar_style);
+                    dir_row(vec![
+                        Options::audio_qualities(self.config.options.audio_quality).into(),
+                        space::horizontal().into(),
+                        Options::audio_formats(self.config.options.audio_format).into(),
+                    ])
+                    .padding(12),
+                    advanced_options(),
+                ]
+            }],
+            column![
+                download_path(),
+                row![if !self.command.is_running() {
+                    button(text(fl!("download")))
+                        .on_press(Message::StartDownload(self.download_link.clone()))
+                } else {
+                    button(text(fl!("download")))
+                }]
+            ]
+            .width(Length::Fill)
+            .align_x(iced::Alignment::Center)
+            .spacing(20)
+            .padding(Padding::ZERO.top(20).horizontal(20))
+        ];
+
+        let mut settings_tab = column![
+            row![
+                checkbox(self.config.save_window_position)
+                    .label(fl!("save_window_position"))
+                    .on_toggle(Message::ToggleSaveWindowPosition)
+            ],
+            dir_row(vec![
+                text(format!("{}:", fl!("ytdlp_path"))).into(),
+                text_input(
+                    &fl!("ytdlp_path_leave_empty"),
+                    &self
+                        .config
+                        .bin_path
+                        .clone()
+                        .unwrap_or("".into())
+                        .to_string_lossy()
+                )
+                .on_input(Message::SelectYtDlpBitPathTextInput)
+                .into(),
+                button(text(fl!("browse")))
+                    .on_press(Message::SelectYtDlpBinPath)
+                    .into(),
+            ])
+            .spacing(SPACING)
+            .align_y(iced::Alignment::Center),
+            dir_row(vec![
+                text(format!("{}:", fl!("cookies_file"))).into(),
+                text_input(
+                    "",
+                    &self
+                        .config
+                        .cookies_file
+                        .clone()
+                        .unwrap_or("".into())
+                        .to_string_lossy()
+                )
+                .on_input(Message::SelectCookiesFileTextInput)
+                .into(),
+                button(text(fl!("browse")))
+                    .on_press(Message::SelectCookiesFile)
+                    .into(),
+            ])
+            .spacing(SPACING)
+            .align_y(iced::Alignment::Center),
+        ]
+        .width(Length::Fill)
+        .spacing(20)
+        .padding(Padding::ZERO.top(20).horizontal(20));
+
+        if is_rtl() {
+            settings_tab = settings_tab.align_x(Alignment::End);
+        }
+
+        let tabs = if is_rtl() {
+            Tabs::new(Message::SelectTab)
+                .push(
+                    Tab::Settings,
+                    iced_aw::TabLabel::Text(fl!("settings")),
+                    scrollable(settings_tab),
+                )
+                .push(Tab::Audio, iced_aw::TabLabel::Text(fl!("audio")), audio_tab)
+                .push(Tab::Video, iced_aw::TabLabel::Text(fl!("video")), video_tab)
+        } else {
+            Tabs::new(Message::SelectTab)
+                .push(Tab::Video, iced_aw::TabLabel::Text(fl!("video")), video_tab)
+                .push(Tab::Audio, iced_aw::TabLabel::Text(fl!("audio")), audio_tab)
+                .push(
+                    Tab::Settings,
+                    iced_aw::TabLabel::Text(fl!("settings")),
+                    settings_tab,
+                )
+        }
+        .set_active_tab(&self.active_tab)
+        .height(Length::Shrink)
+        .width(Length::FillPortion(1))
+        .tab_bar_width(Length::FillPortion(1))
+        .tab_bar_style(tab_bar_style);
+
+        let mut download_link_input = text_input(&fl!("download_link"), &self.download_link)
+            .on_input(Message::InputChanged)
+            .on_submit(Message::StartDownload(self.download_link.clone()))
+            .size(FONT_SIZE)
+            .width(Length::Fill)
+            .id(self.download_text_input_id.clone());
+
+        if is_rtl() {
+            download_link_input = download_link_input.align_x(Alignment::End)
+        }
 
         let content: iced::Element<Message> = column![
-            row![
-                text_input(&fl!("download_link"), &self.download_link)
-                    .on_input(Message::InputChanged)
-                    .on_submit(Message::StartDownload(self.download_link.clone(),))
-                    .size(FONT_SIZE)
-                    .width(Length::Fill)
-                    .id(self.download_text_input_id.clone()),
+            dir_row(vec![
+                download_link_input.into(),
                 checkbox(self.is_playlist)
-                    .label("Playlist")
-                    .on_toggle(Message::TogglePlaylist),
-            ]
+                    .label(fl!("playlist"))
+                    .on_toggle(Message::TogglePlaylist)
+                    .into(),
+            ])
             .spacing(7)
             .align_y(iced::Alignment::Center),
             tabs,
