@@ -25,8 +25,6 @@ mod flags {
             }
             cmd new-version {
                 required version: String
-                /// Specify rel for PKGBUILD (only works package_aur task).
-                optional -r,--rel rel: u8
                 /// AUR package commit message.
                 optional -m,--message message: String
             }
@@ -485,7 +483,7 @@ fn new_version(new_version: flags::NewVersion) -> anyhow::Result<()> {
         .run(&format!("git push origin {}", tag))?;
 
     println!("Packaging application for AUR");
-    package_aur(new_version.rel)?;
+    package_aur(Some(1))?;
 
     println!("Publishing AUR package");
     publish_aur(new_version.message)?;
