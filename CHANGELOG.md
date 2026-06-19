@@ -1,10 +1,15 @@
 # Changelog
 
+## 3.4.0
+- Minor: Add advanced options section (this will allow adding more features without ruining the simple use case experience)
+- Minor: Better UI layout for Arabic (still a bit janky)
+- Minor: Embed thumbnail option (Thanks to @iKetsui! #70)
+
 ## 3.3.0
 - Minor: Added checking for updates (no self update)
 
 ## 3.2.0
-- Updated to `iced` v0.14
+- Minor: Updated to `iced` v0.14
 - Dev: remove kdialog and zenity from nix build
 
 ## 3.1.2
@@ -16,7 +21,7 @@
 
 ## 3.1.0
 - Minor: Add the base for localization using [Fluent](https://projectfluent.org/) (contributions are very much welcome!!)
-- Minor: Add a notification for downloads (Thanks to @iKetsui! @62)
+- Minor: Add a notification for downloads (Thanks to @iKetsui! #62)
 - Minor: Add X button to errors
 - Minor: expand tilde `~` when used in the download path text input
 
