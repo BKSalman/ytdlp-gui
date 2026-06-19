@@ -88,6 +88,7 @@ pub enum AudioFormat {
     Vorbis,
     M4a,
     Opus,
+    Flac,
 }
 
 impl core::fmt::Display for AudioFormat {
@@ -98,6 +99,7 @@ impl core::fmt::Display for AudioFormat {
             AudioFormat::Vorbis => write!(f, "VORBIS"),
             AudioFormat::M4a => write!(f, "M4A"),
             AudioFormat::Opus => write!(f, "OPUS"),
+            AudioFormat::Flac => write!(f, "FLAC"),
         }
     }
 }
@@ -132,6 +134,7 @@ impl AudioFormat {
             AudioFormat::Vorbis => "vorbis",
             AudioFormat::Opus => "opus",
             AudioFormat::M4a => "m4a",
+            AudioFormat::Flac => "flac",
         }
     }
 }
@@ -206,6 +209,7 @@ impl Options {
                     AudioFormat::Vorbis,
                     AudioFormat::M4a,
                     AudioFormat::Opus,
+                    AudioFormat::Flac,
                 ],
                 Some(format),
                 Message::SelectedAudioFormat,
