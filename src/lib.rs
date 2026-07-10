@@ -20,6 +20,7 @@ mod app;
 mod checkbox;
 mod collapsible;
 pub mod command;
+pub mod cookies;
 mod error;
 pub mod i18n;
 pub mod media_options;
@@ -66,6 +67,10 @@ pub enum Message {
     SelectCookiesFile,
     SelectedCookiesFile(Option<PathBuf>),
     SelectCookiesFileTextInput(String),
+    SelectedCookiesBrowser(cookies::Browser),
+    SelectedCookiesKeyring(cookies::Keyring),
+    InputCookiesProfile(String),
+    InputCookiesContainer(String),
     UpdateCheck(Result<Option<update::Version>, update::Error>),
     OpenLink(String),
     ToggleAdvancedOptions,
@@ -115,6 +120,8 @@ pub struct Config {
     download_folder: PathBuf,
     #[serde(deserialize_with = "empty_string_as_none")]
     cookies_file: Option<PathBuf>,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    cookies_browser: Option<String>,
     pub save_window_position: bool,
     pub window_position: Option<WindowPosition>,
     pub window_size: Option<WindowSize>,
@@ -127,6 +134,7 @@ impl Default for Config {
             bin_path: Default::default(),
             download_folder: download_folder_default(),
             cookies_file: Default::default(),
+            cookies_browser: Default::default(),
             save_window_position: Default::default(),
             window_position: Default::default(),
             window_size: Default::default(),

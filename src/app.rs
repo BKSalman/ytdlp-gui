@@ -8,6 +8,7 @@ use iced_aw::Tabs;
 use url::Url;
 
 use crate::collapsible::collapsible;
+use crate::cookies::{Browser, CookiesFromBrowser, Keyring};
 use crate::error::DownloadError;
 use crate::i18n::{dir_row, is_rtl};
 use crate::media_options::{Options, playlist_options};
@@ -215,6 +216,11 @@ impl YtGUI {
                     args.push(cookies_file.to_str().unwrap());
                 }
 
+                if let Some(cookies_browser) = &self.config.cookies_browser {
+                    args.push("--cookies-from-browser");
+                    args.push(cookies_browser);
+                }
+
                 let playlist_options =
                     playlist_options(self.is_playlist, self.config.download_folder.clone());
 
@@ -283,9 +289,13 @@ impl YtGUI {
                 self.is_file_dialog_open = false;
             }
             Message::SelectCookiesFileTextInput(cookies_string) => {
-                let path = PathBuf::from(cookies_string);
+                if cookies_string.is_empty() {
+                    self.config.cookies_file = None;
+                } else {
+                    let path = PathBuf::from(cookies_string);
 
-                self.config.cookies_file = Some(path);
+                    self.config.cookies_file = Some(path);
+                }
             }
             Message::UpdateCheck(res) => {
                 // TODO: logging
@@ -307,9 +317,33 @@ impl YtGUI {
             Message::ToggleAdvancedOptions => {
                 self.show_advanced_options = !self.show_advanced_options;
             }
+            Message::SelectedCookiesBrowser(browser) => {
+                let mut cookies = self.cookies_from_browser();
+                cookies.browser = browser;
+                self.config.cookies_browser = cookies.to_arg();
+            }
+            Message::SelectedCookiesKeyring(keyring) => {
+                let mut cookies = self.cookies_from_browser();
+                cookies.keyring = keyring;
+                self.config.cookies_browser = cookies.to_arg();
+            }
+            Message::InputCookiesProfile(profile) => {
+                let mut cookies = self.cookies_from_browser();
+                cookies.profile = profile;
+                self.config.cookies_browser = cookies.to_arg();
+            }
+            Message::InputCookiesContainer(container) => {
+                let mut cookies = self.cookies_from_browser();
+                cookies.container = container;
+                self.config.cookies_browser = cookies.to_arg();
+            }
         }
 
         iced::Task::none()
+    }
+
+    fn cookies_from_browser(&self) -> CookiesFromBrowser {
+        CookiesFromBrowser::from_config(self.config.cookies_browser.as_deref().unwrap_or_default())
     }
 
     pub fn view(&self) -> iced::Element<'_, Message> {
@@ -430,6 +464,77 @@ impl YtGUI {
             .padding(Padding::ZERO.top(20).horizontal(20))
         ];
 
+        // Cookies-from-browser is a small dynamic form: the browser dropdown is
+        // always shown, and the keyring / profile / container rows appear only
+        // when they apply to the selected browser.
+        let cookies = self.cookies_from_browser();
+
+        let mut cookies_from_browser = vec![
+            dir_row(vec![
+                text(format!("{}:", fl!("cookies_from_browser"))).into(),
+                pick_list(
+                    Browser::ALL,
+                    Some(cookies.browser),
+                    Message::SelectedCookiesBrowser,
+                )
+                .style(pick_list_style)
+                .menu_style(pick_list_menu_style)
+                .into(),
+            ])
+            .spacing(SPACING)
+            .align_y(Alignment::Center)
+            .into(),
+        ];
+
+        if cookies.browser.supports_keyring() {
+            cookies_from_browser.push(
+                dir_row(vec![
+                    text(format!("{}:", fl!("cookies_keyring"))).into(),
+                    pick_list(
+                        Keyring::ALL,
+                        Some(cookies.keyring),
+                        Message::SelectedCookiesKeyring,
+                    )
+                    .style(pick_list_style)
+                    .menu_style(pick_list_menu_style)
+                    .into(),
+                ])
+                .spacing(SPACING)
+                .align_y(Alignment::Center)
+                .into(),
+            );
+        }
+
+        if cookies.browser != Browser::Disabled {
+            cookies_from_browser.push(
+                dir_row(vec![
+                    text(format!("{}:", fl!("cookies_profile"))).into(),
+                    text_input(&fl!("cookies_profile_placeholder"), &cookies.profile)
+                        .on_input(Message::InputCookiesProfile)
+                        .into(),
+                ])
+                .spacing(SPACING)
+                .align_y(Alignment::Center)
+                .into(),
+            );
+        }
+
+        if cookies.browser.supports_container() {
+            cookies_from_browser.push(
+                dir_row(vec![
+                    text(format!("{}:", fl!("cookies_container"))).into(),
+                    text_input(&fl!("cookies_container_placeholder"), &cookies.container)
+                        .on_input(Message::InputCookiesContainer)
+                        .into(),
+                ])
+                .spacing(SPACING)
+                .align_y(Alignment::Center)
+                .into(),
+            );
+        }
+
+        let cookies_from_browser = dir_row(cookies_from_browser).spacing(20);
+
         let mut settings_tab = column![
             row![
                 checkbox(self.config.save_window_position)
@@ -474,6 +579,7 @@ impl YtGUI {
             ])
             .spacing(SPACING)
             .align_y(iced::Alignment::Center),
+            cookies_from_browser,
         ]
         .width(Length::Fill)
         .spacing(20)
