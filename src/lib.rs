@@ -46,6 +46,7 @@ pub enum Message {
     InputChanged(String),
     TogglePlaylist(bool),
     ToggleThumbnail(bool),
+    ToggleForceOverwrite(bool),
     SelectedSponsorBlockOption(SponsorBlockOption),
     SelectedVideoFormat(VideoFormat),
     SelectedResolution(VideoResolution),
@@ -159,6 +160,7 @@ pub struct YtGUI {
     download_link: String,
     is_playlist: bool,
     get_thumbnail: bool,
+    force_overwrite: bool,
     sponsorblock: SponsorBlockOption,
     config: Config,
 
@@ -190,6 +192,7 @@ impl YtGUI {
             download_link: flags.url.clone().unwrap_or_default(),
             is_playlist: Default::default(),
             get_thumbnail: Default::default(),
+            force_overwrite: Default::default(),
             sponsorblock: Default::default(),
             config: flags.config,
 

@@ -50,6 +50,9 @@ impl YtGUI {
             Message::ToggleThumbnail(get_thumbnail) => {
                 self.get_thumbnail = get_thumbnail;
             }
+            Message::ToggleForceOverwrite(force_overwrite) => {
+                self.force_overwrite = force_overwrite;
+            }
             Message::SelectedSponsorBlockOption(sponsorblock) => {
                 self.sponsorblock = sponsorblock;
             }
@@ -190,8 +193,6 @@ impl YtGUI {
                         if self.get_thumbnail {
                             args.push("--embed-thumbnail")
                         }
-
-                        tracing::debug!("{args:#?}");
                     }
                     DownloadType::Audio => {
                         // Audio tab
@@ -221,6 +222,10 @@ impl YtGUI {
                     args.push(cookies_browser);
                 }
 
+                if self.force_overwrite {
+                    args.push("--force-overwrites");
+                }
+
                 let playlist_options =
                     playlist_options(self.is_playlist, self.config.download_folder.clone());
 
@@ -235,6 +240,8 @@ impl YtGUI {
                         args.push("--sponsorblock-mark=default");
                     }
                 }
+
+                tracing::debug!("{args:#?}");
 
                 self.download_message = self.command.start(
                     args,
@@ -369,6 +376,9 @@ impl YtGUI {
                 checkbox(self.get_thumbnail)
                     .label(fl!("embed-thumbnail"))
                     .on_toggle(Message::ToggleThumbnail),
+                checkbox(self.force_overwrite)
+                    .label(fl!("force-overwrite"))
+                    .on_toggle(Message::ToggleForceOverwrite),
             ];
 
             if is_rtl() {

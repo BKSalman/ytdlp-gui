@@ -29,5 +29,6 @@ cookies_profile_placeholder = Profile name or path (optional)
 cookies_container = Container
 cookies_container_placeholder = Container name, or "none" (optional)
 embed-thumbnail = Embed Thumbnail
+force-overwrite = Overwrite existing files
 advanced-options = Advanced options
 playlist = Playlist

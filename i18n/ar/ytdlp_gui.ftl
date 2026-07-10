@@ -29,5 +29,6 @@ cookies_profile_placeholder = اسم الملف الشخصي أو مساره (ا
 cookies_container = الحاوية
 cookies_container_placeholder = اسم الحاوية، أو "none" (اختياري)
 embed-thumbnail = تضمين الصورة المصغرة
+force-overwrite = الكتابة فوق الملفات الموجودة
 advanced-options = خيارات متقدمة
 playlist = قائمة تشغيل
