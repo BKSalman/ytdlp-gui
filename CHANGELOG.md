@@ -1,7 +1,10 @@
 # Changelog
 
+## 3.5.1
+- Patch: Add option to overwrite already downloaded files
+
 ## 3.5.0
-- Minor: allow users to get cookies from browsers directly (--cookies-from-browser)
+- Minor: Allow users to get cookies from browsers directly (--cookies-from-browser)
 
 ## 3.4.1
 - Patch: Add FLAC format
