@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.5.0
+- Minor: allow users to get cookies from browsers directly (--cookies-from-browser)
+
 ## 3.4.1
 - Patch: Add FLAC format
 
